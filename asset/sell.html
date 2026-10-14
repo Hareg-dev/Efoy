@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>POS - SELL</title>
+<!-- Tailwind CSS CDN with forms & container queries -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf9',
+              100: '#ccfbe9',
+              500: '#14b8a6',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+              dark: '#1b635c',
+              darker: '#165751',
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom styles for iOS touch handling & rounded drawer -->
+<style data-purpose="custom-layout">
+    body {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .sheet-shadow {
+      box-shadow: 0 -10px 30px -5px rgba(0, 0, 0, 0.08);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900 flex justify-center min-h-screen">
+<!-- Mobile Screen Container -->
+<div class="w-full max-w-md bg-[#f7f8fa] min-h-screen flex flex-col relative pb-20 overflow-hidden shadow-2xl">
+<!-- BEGIN: TopBar -->
+<header class="px-5 pt-8 pb-3 bg-[#f7f8fa] flex items-center justify-between sticky top-0 z-10" data-purpose="app-header">
+<h1 class="text-2xl font-black tracking-tight text-gray-900 uppercase">SELL</h1>
+<!-- Hold Order Action Button -->
+<button class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gray-200/80 hover:bg-gray-300 text-gray-700 text-sm font-semibold transition active:scale-95" data-purpose="hold-button" type="button">
+<svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
+<path d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span>Hold</span>
+</button>
+</header>
+<!-- END: TopBar -->
+<!-- BEGIN: ProductGridSection -->
+<main class="flex-1 px-4 overflow-y-auto hide-scrollbar space-y-3 pb-8" data-purpose="products-grid-container">
+<!-- Top Row visible cards (partial display matching background context) -->
+<div class="grid grid-cols-3 gap-2.5">
+<!-- Item: Boiler -->
+<div class="bg-white rounded-2xl p-3 flex flex-col justify-between shadow-sm border border-gray-100/80 min-h-[110px]">
+<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center self-center mb-1">
+<svg class="w-4 h-4 fill-current text-teal-800" viewbox="0 0 24 24">
+<path d="M19 4H5a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 8H5a1 1 0 00-1 1v6a2 2 0 002 2h12a2 2 0 002-2v-6a1 1 0 00-1-1zm-7 3h-2v-2h2v2z"></path>
+</svg>
+</div>
+<div>
+<div class="text-[11px] font-medium text-gray-500">4,000.00 ብር</div>
+<div class="text-[10px] text-gray-400">5 left</div>
+</div>
+</div>
+<!-- Item: Cups -->
+<div class="bg-white rounded-2xl p-3 flex flex-col justify-between shadow-sm border border-gray-100/80 min-h-[110px]">
+<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center self-center mb-1">
+<svg class="w-4 h-4 fill-current text-teal-800" viewbox="0 0 24 24">
+<path d="M19 4H5a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 8H5a1 1 0 00-1 1v6a2 2 0 002 2h12a2 2 0 002-2v-6a1 1 0 00-1-1zm-7 3h-2v-2h2v2z"></path>
+</svg>
+</div>
+<div>
+<div class="text-[11px] font-medium text-gray-500">120.00 ብር</div>
+<div class="text-[10px] text-gray-400">34 left</div>
+</div>
+</div>
+<!-- Item: Spoon -->
+<div class="bg-white rounded-2xl p-3 flex flex-col justify-between shadow-sm border border-gray-100/80 min-h-[110px]">
+<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center self-center mb-1">
+<svg class="w-4 h-4 fill-current text-teal-800" viewbox="0 0 24 24">
+<path d="M19 4H5a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 8H5a1 1 0 00-1 1v6a2 2 0 002 2h12a2 2 0 002-2v-6a1 1 0 00-1-1zm-7 3h-2v-2h2v2z"></path>
+</svg>
+</div>
+<div>
+<div class="text-[11px] font-medium text-gray-500">25.00 ብር</div>
+<div class="text-[10px] text-gray-400">13 left</div>
+</div>
+</div>
+</div>
+<!-- Second Row of Products -->
+<div class="grid grid-cols-3 gap-2.5">
+<!-- Item: Oil sunflower -->
+<div class="bg-white rounded-2xl p-3 flex flex-col justify-between shadow-sm border border-gray-100/80 h-[120px]" data-purpose="product-card">
+<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center mb-1">
+<svg class="w-4 h-4 fill-current text-teal-800" viewbox="0 0 24 24">
+<path d="M19 4H5a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 8H5a1 1 0 00-1 1v6a2 2 0 002 2h12a2 2 0 002-2v-6a1 1 0 00-1-1zm-7 3h-2v-2h2v2z"></path>
+</svg>
+</div>
+<div>
+<h3 class="text-xs font-medium text-gray-800 truncate">Oil sunflower</h3>
+<div class="text-xs font-black text-teal-800">800.00 ብር</div>
+<div class="text-[10px] text-gray-400">20 left</div>
+</div>
+</div>
+<!-- Item: Sugar (Selected/In-cart styling) -->
+<div class="bg-[#1b635c] text-white rounded-2xl p-3 flex flex-col justify-between shadow-sm relative h-[120px]" data-purpose="product-card-selected">
+<!-- Count badge -->
+<span class="absolute top-2 right-2 w-5 h-5 rounded-full bg-white text-[#1b635c] text-[11px] font-bold flex items-center justify-center shadow">1</span>
+<div class="w-8 h-8 rounded-lg bg-white/20 text-white flex items-center justify-center mb-1">
+<svg class="w-4 h-4 fill-current text-white" viewbox="0 0 24 24">
+<path d="M19 4H5a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 8H5a1 1 0 00-1 1v6a2 2 0 002 2h12a2 2 0 002-2v-6a1 1 0 00-1-1zm-7 3h-2v-2h2v2z"></path>
+</svg>
+</div>
+<div>
+<h3 class="text-xs font-medium text-white/95 truncate">Sugar</h3>
+<div class="text-xs font-black text-white">55.00 ብር</div>
+<div class="text-[10px] text-white/70">36 left</div>
+</div>
+</div>
+<!-- Placeholder card to maintain 3-col balance -->
+<div class="bg-white rounded-2xl p-3 flex flex-col justify-between shadow-sm border border-gray-100/80 h-[120px] opacity-40">
+<div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center mb-1">
+<svg class="w-4 h-4 fill-current text-teal-800" viewbox="0 0 24 24">
+<path d="M19 4H5a2 2 0 00-2 2v2a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zm0 8H5a1 1 0 00-1 1v6a2 2 0 002 2h12a2 2 0 002-2v-6a1 1 0 00-1-1zm-7 3h-2v-2h2v2z"></path>
+</svg>
+</div>
+<div>
+<div class="h-3 w-12 bg-gray-200 rounded mb-1"></div>
+<div class="h-3 w-16 bg-gray-200 rounded"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- END: ProductGridSection -->
+<!-- BEGIN: CartSheet -->
+<section class="bg-white rounded-t-[34px] sheet-shadow border-t border-gray-100 px-5 pt-5 pb-5 z-20 flex flex-col" data-purpose="cart-drawer">
+<!-- Cart Header: Counter & Clear All -->
+<div class="flex items-center justify-between pb-3.5" data-purpose="cart-header">
+<div class="flex items-center gap-2">
+<span class="w-6 h-6 rounded-full bg-[#1b635c] text-white text-xs font-black flex items-center justify-center">2</span>
+<span class="text-base font-extrabold tracking-wide text-gray-900">CART</span>
+</div>
+<button class="text-rose-700 text-sm font-semibold active:opacity-75 transition" type="button">Clear all</button>
+</div>
+<!-- Cart Line Items -->
+<div class="divide-y divide-gray-100" data-purpose="cart-items-list">
+<!-- Cart Item 1: Cacophony -->
+<div class="py-3 flex items-center justify-between gap-2" data-purpose="cart-item">
+<div class="min-w-0 flex-1">
+<h4 class="text-sm font-bold text-gray-900 leading-tight">Cacophony</h4>
+<div class="flex items-center gap-1 text-teal-800 font-bold text-xs mt-0.5">
+<span>60.00 ብር</span>
+<!-- Edit pencil icon -->
+<svg class="w-3 h-3 text-teal-700" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<!-- Quantity Stepper -->
+<div class="flex items-center gap-2">
+<button class="w-7 h-7 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-sm active:bg-gray-200" type="button">
+              −
+            </button>
+<span class="text-sm font-bold text-gray-900 w-4 text-center border-b border-dashed border-gray-400">1</span>
+<button class="w-7 h-7 rounded-full bg-[#1b635c] text-white flex items-center justify-center font-bold text-sm active:bg-teal-900" type="button">
+              +
+            </button>
+</div>
+<!-- Price & Remove -->
+<div class="flex items-center gap-3 pl-2">
+<span class="text-sm font-bold text-gray-900">60.00 ብር</span>
+<button aria-label="Remove Cacophony" class="text-rose-500 hover:text-rose-700 p-1" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+</div>
+<!-- Cart Item 2: Sugar -->
+<div class="py-3 flex items-center justify-between gap-2" data-purpose="cart-item">
+<div class="min-w-0 flex-1">
+<h4 class="text-sm font-bold text-gray-900 leading-tight">Sugar</h4>
+<div class="flex items-center gap-1 text-teal-800 font-bold text-xs mt-0.5">
+<span>55.00 ብር</span>
+<!-- Edit pencil icon -->
+<svg class="w-3 h-3 text-teal-700" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+</div>
+<!-- Quantity Stepper -->
+<div class="flex items-center gap-2">
+<button class="w-7 h-7 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center font-bold text-sm active:bg-gray-200" type="button">
+              −
+            </button>
+<span class="text-sm font-bold text-gray-900 w-4 text-center border-b border-dashed border-gray-400">1</span>
+<button class="w-7 h-7 rounded-full bg-[#1b635c] text-white flex items-center justify-center font-bold text-sm active:bg-teal-900" type="button">
+              +
+            </button>
+</div>
+<!-- Price & Remove -->
+<div class="flex items-center gap-3 pl-2">
+<span class="text-sm font-bold text-gray-900">55.00 ብር</span>
+<button aria-label="Remove Sugar" class="text-rose-500 hover:text-rose-700 p-1" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewbox="0 0 24 24">
+<path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+</div>
+</div>
+<!-- Total Row -->
+<div class="bg-gray-50/80 -mx-5 px-5 py-2.5 my-2 flex items-center justify-between" data-purpose="cart-total-bar">
+<span class="text-xs font-bold tracking-wider text-gray-400 uppercase">TOTAL</span>
+<span class="text-2xl font-black text-[#1b635c] tracking-tight">115.00 ብር</span>
+</div>
+<!-- Payment Method Selection -->
+<div class="mt-2" data-purpose="payment-methods">
+<span class="text-[10px] font-extrabold tracking-wider text-gray-400 uppercase block mb-2">PAYMENT METHOD</span>
+<div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-1">
+<!-- Active Method: Cash -->
+<button class="px-5 py-2 rounded-full bg-[#1b635c] text-white text-xs font-bold shadow-sm whitespace-nowrap active:scale-95 transition" type="button">
+            Cash
+          </button>
+<!-- Method: Telebirr -->
+<button class="px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 whitespace-nowrap active:scale-95 transition" type="button">
+            Telebirr
+          </button>
+<!-- Method: CBE Birr -->
+<button class="px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 whitespace-nowrap active:scale-95 transition" type="button">
+            CBE Birr
+          </button>
+<!-- Method: Amhara Bank -->
+<button class="px-4 py-2 rounded-full bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 whitespace-nowrap active:scale-95 transition" type="button">
+            Amhara B
+          </button>
+</div>
+</div>
+<!-- Amount Input Field -->
+<div class="mt-3" data-purpose="amount-received-input">
+<div class="relative flex items-center bg-[#f4f5f7] rounded-xl px-4 py-3 border border-transparent focus-within:border-teal-700 focus-within:bg-white transition">
+<span class="text-sm font-semibold text-gray-400 mr-3">Birr</span>
+<input class="w-full bg-transparent p-0 text-sm text-gray-800 placeholder-gray-400 focus:ring-0 border-none font-medium" placeholder="Amount received" type="number"/>
+</div>
+</div>
+<!-- Complete Sale Action Button -->
+<div class="mt-4" data-purpose="complete-sale-action">
+<button class="w-full py-3.5 bg-[#1b635c] hover:bg-[#165751] active:scale-[0.99] text-white font-extrabold text-sm rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-teal-900/10 transition" type="button">
+<!-- White circle checkmark -->
+<div class="w-5 h-5 rounded-full bg-white text-[#1b635c] flex items-center justify-center">
+<svg class="w-3.5 h-3.5 stroke-current" fill="none" stroke-width="3.5" viewbox="0 0 24 24">
+<path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<span class="tracking-wide uppercase">COMPLETE SALE · 115.00 ብር</span>
+</button>
+</div>
+</section>
+<!-- END: CartSheet -->
+<!-- BEGIN: BottomNavigationBar -->
+<nav class="fixed bottom-0 max-w-md w-full bg-white border-t border-gray-200 px-3 py-2 z-30 flex items-center justify-between" data-purpose="bottom-navigation">
+<!-- Tab: HOME -->
+<a class="flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 w-16 py-1" href="#">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[9px] font-bold mt-1 tracking-wider uppercase">HOME</span>
+</a>
+<!-- Tab: SELL (Active Pill Container) -->
+<a class="flex flex-col items-center justify-center w-16 py-1" href="#">
+<div class="w-16 h-8 bg-[#1b635c] rounded-full flex items-center justify-center shadow-sm">
+<!-- POS Register Icon -->
+<svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<span class="text-[9px] font-bold text-[#1b635c] mt-0.5 tracking-wider uppercase">SELL</span>
+</a>
+<!-- Tab: INVENTORY -->
+<a class="flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 w-16 py-1" href="#">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[9px] font-bold mt-1 tracking-wider uppercase">INVENTORY</span>
+</a>
+<!-- Tab: EXPENSES -->
+<a class="flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 w-16 py-1" href="#">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[9px] font-bold mt-1 tracking-wider uppercase">EXPENSES</span>
+</a>
+<!-- Tab: PROFILE -->
+<a class="flex flex-col items-center justify-center text-gray-400 hover:text-gray-600 w-16 py-1" href="#">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[9px] font-bold mt-1 tracking-wider uppercase">PROFILE</span>
+</a>
+</nav>
+<!-- END: BottomNavigationBar -->
+</div>
+</body></html>

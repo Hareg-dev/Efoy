@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Profile - Selam mini-market</title>
+<!-- Tailwind CSS CDN with forms and container plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration for customized palette matching design -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              teal: '#0a6358',
+              tealLight: '#eef8f6',
+              dark: '#141c24',
+              grayBg: '#f7f8fa',
+              subtle: '#8a94a2',
+              cardBorder: '#f0f2f5',
+              crimson: '#b91c1c',
+              amber: '#d97706',
+            }
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<!-- Custom Styles for Mobile Shell, Shadows and Clean Rendering -->
+<style data-purpose="base-layout">
+    body {
+      background-color: #f7f8fa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Hide scrollbar for clean horizontal tab list */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-[#f7f8fa] text-slate-800 flex justify-center min-h-screen">
+<!-- Mobile Screen Container (Emulates iOS viewport width max-w-sm / max-w-md) -->
+<div class="w-full max-w-md min-h-screen flex flex-col justify-between pb-28">
+<!-- BEGIN: TopBar -->
+<header class="px-5 pt-8 pb-3 bg-white/70 backdrop-blur-md sticky top-0 z-20" data-purpose="page-header">
+<!-- Title & Action Row -->
+<div class="flex items-center justify-between mb-4">
+<div>
+<h1 class="text-2xl font-black tracking-tight text-neutral-900 leading-none">PROFILE</h1>
+<p class="text-xs font-medium text-neutral-400 mt-1 tracking-wide">Reports + business identity</p>
+</div>
+<!-- Share Button -->
+<button aria-label="Share profile" class="w-10 h-10 rounded-2xl bg-neutral-100 flex items-center justify-center text-neutral-500 hover:bg-neutral-200 transition" type="button">
+<svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+<!-- Time Filter Selector (7D, 30D, 90D, Custom) -->
+<div class="flex items-center space-x-2 text-xs font-semibold" data-purpose="timeframe-filters">
+<button class="px-3.5 py-1.5 rounded-full text-neutral-400 hover:text-neutral-600 font-bold transition" type="button">7D</button>
+<button class="px-4 py-1.5 rounded-full bg-[#0a6358] text-white font-bold shadow-sm shadow-teal-900/10" type="button">30D</button>
+<button class="px-3.5 py-1.5 rounded-full text-neutral-400 hover:text-neutral-600 font-bold transition" type="button">90D</button>
+<button class="px-3.5 py-1.5 rounded-full bg-neutral-100 text-neutral-500 hover:bg-neutral-200 flex items-center space-x-1.5 transition" type="button">
+<svg class="w-3.5 h-3.5 text-neutral-500" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="font-medium">Custom</span>
+</button>
+</div>
+<!-- Sub Navigation Pills (Scrollable) -->
+<nav aria-label="Sections" class="flex items-center space-x-2 overflow-x-auto no-scrollbar pt-4 pb-1">
+<!-- Overview (Active) -->
+<button class="flex-shrink-0 flex items-center space-x-1.5 px-4 py-2 bg-neutral-900 text-white rounded-full text-xs font-semibold shadow-sm" type="button">
+<svg class="w-3.5 h-3.5 text-white" fill="currentColor" viewbox="0 0 20 20">
+<path d="M3 4a1 1 0 011-1h3a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm10 0a1 1 0 011-1h3a1 1 0 011 1v4a1 1 0 01-1 1h-3a1 1 0 01-1-1V4zM3 12a1 1 0 011-1h3a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h3a1 1 0 011 1v4a1 1 0 01-1 1h-3a1 1 0 01-1-1v-4z"></path>
+</svg>
+<span>Overview</span>
+</button>
+<!-- Trend -->
+<button class="flex-shrink-0 flex items-center space-x-1.5 px-4 py-2 bg-neutral-100 text-neutral-400 hover:text-neutral-600 rounded-full text-xs font-medium transition" type="button">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+</svg>
+<span>Trend</span>
+</button>
+<!-- Products -->
+<button class="flex-shrink-0 flex items-center space-x-1.5 px-4 py-2 bg-neutral-100 text-neutral-400 hover:text-neutral-600 rounded-full text-xs font-medium transition" type="button">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Products</span>
+</button>
+<!-- Expenses -->
+<button class="flex-shrink-0 flex items-center space-x-1.5 px-4 py-2 bg-neutral-100 text-neutral-400 hover:text-neutral-600 rounded-full text-xs font-medium transition" type="button">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span>Expenses</span>
+</button>
+</nav>
+</header>
+<!-- END: TopBar -->
+<!-- Main Content Body -->
+<main class="px-4 py-3 space-y-4" data-purpose="profile-content">
+<!-- BEGIN: IdentityCard -->
+<div class="bg-white rounded-3xl p-4 shadow-sm border border-neutral-100 flex items-center justify-between" data-purpose="merchant-identity">
+<div class="flex items-center space-x-3.5">
+<!-- Teal Store Avatar -->
+<div class="w-14 h-14 rounded-2xl bg-[#0a6358] flex items-center justify-center text-white flex-shrink-0 shadow-sm shadow-[#0a6358]/20">
+<svg class="w-8 h-8" fill="currentColor" viewbox="0 0 24 24">
+<path d="M4 4h16a1 1 0 011 1v2.5a3.5 3.5 0 01-3.5 3.5 3.5 3.5 0 01-3.5-3.5V6H10v1.5A3.5 3.5 0 016.5 11 3.5 3.5 0 013 7.5V5a1 1 0 011-1z"></path>
+<path d="M5 12.5V19a1 1 0 001 1h12a1 1 0 001-1v-6.5a5.45 5.45 0 01-2 .41c-.9 0-1.74-.24-2.47-.66A5.44 5.44 0 0112 14c-.9 0-1.74-.24-2.47-.66A5.45 5.45 0 015 12.5zM10 17a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z"></path>
+</svg>
+</div>
+<!-- Info Details -->
+<div>
+<h2 class="text-base font-bold text-neutral-900 leading-snug">Selam mini-market</h2>
+<p class="text-xs text-neutral-400 mt-0.5">Selam kebede · 0988565678</p>
+<p class="text-[11px] font-semibold text-[#0a6358] mt-1 tracking-tight">2026-09-13 TO 2026-10-13</p>
+</div>
+</div>
+<!-- Edit Profile Pen Button -->
+<button aria-label="Edit Store" class="w-9 h-9 rounded-full bg-neutral-50 flex items-center justify-center text-neutral-400 hover:bg-neutral-100 transition" type="button">
+<svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</button>
+</div>
+<!-- END: IdentityCard -->
+<!-- BEGIN: FinancialMetricsGrid -->
+<section aria-label="Key Financial Metrics" class="grid grid-cols-2 gap-3" data-purpose="metrics-grid">
+<!-- Revenue Card -->
+<div class="bg-white rounded-3xl p-4 border border-neutral-100 shadow-sm flex flex-col justify-between h-36">
+<div class="w-8 h-8 flex items-center justify-start text-[#0a6358]">
+<svg class="w-6 h-6 stroke-[2.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<div class="text-xl font-extrabold text-[#0a6358] tracking-tight leading-tight">
+              770,055.00
+              <span class="text-lg">ብር</span>
+</div>
+<div class="text-[10px] font-extrabold text-neutral-400 tracking-wider uppercase mt-1">REVENUE</div>
+</div>
+</div>
+<!-- Gross Profit Card -->
+<div class="bg-white rounded-3xl p-4 border border-neutral-100 shadow-sm flex flex-col justify-between h-36">
+<div class="w-8 h-8 flex items-center justify-start text-[#0a6358]">
+<svg class="w-6 h-6 stroke-[2]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<div class="text-xl font-extrabold text-[#0a6358] tracking-tight leading-tight">
+              14,017.00
+              <span class="text-lg">ብር</span>
+</div>
+<div class="text-[10px] font-extrabold text-neutral-400 tracking-wider uppercase mt-1">GROSS PROFIT</div>
+</div>
+</div>
+<!-- Op. Expenses Card -->
+<div class="bg-white rounded-3xl p-4 border border-neutral-100 shadow-sm flex flex-col justify-between h-36">
+<div class="w-8 h-8 flex items-center justify-start text-[#ba2424]">
+<svg class="w-6 h-6" fill="currentColor" viewbox="0 0 24 24">
+<path d="M4 5a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2H4zm0 2h16v10H4V7zm8 2a3 3 0 100 6 3 3 0 000-6zm0 2a1 1 0 110 2 1 1 0 010-2z"></path>
+</svg>
+</div>
+<div>
+<div class="text-xl font-extrabold text-[#ba2424] tracking-tight leading-tight">
+              4,000.00
+              <span class="text-lg">ብር</span>
+</div>
+<div class="text-[10px] font-extrabold text-neutral-400 tracking-wider uppercase mt-1">OP. EXPENSES</div>
+</div>
+</div>
+<!-- Gross Margin Card -->
+<div class="bg-white rounded-3xl p-4 border border-neutral-100 shadow-sm flex flex-col justify-between h-36">
+<div class="w-8 h-8 flex items-center justify-start text-[#d97706]">
+<svg class="w-6 h-6 stroke-[2.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 7a2 2 0 11-4 0 2 2 0 014 0zm10 10a2 2 0 11-4 0 2 2 0 014 0zm-14 8L19 3" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<div>
+<div class="text-2xl font-extrabold text-[#d97706] tracking-tight leading-tight">
+              2%
+            </div>
+<div class="text-[10px] font-extrabold text-neutral-400 tracking-wider uppercase mt-1">GROSS MARGIN</div>
+</div>
+</div>
+</section>
+<!-- END: FinancialMetricsGrid -->
+<!-- BEGIN: DecisionInsights -->
+<section aria-label="Decision Insights" class="bg-white rounded-3xl p-5 border border-neutral-100 shadow-sm space-y-4" data-purpose="insights-container">
+<!-- Section Header Label -->
+<h3 class="text-[11px] font-black text-neutral-400 tracking-wider uppercase">
+          DECISION INSIGHTS
+        </h3>
+<!-- Insight Items List -->
+<div class="space-y-4 pt-1">
+<!-- Item 1: Margin Alert -->
+<div class="flex items-start space-x-3.5">
+<span aria-label="Warning" class="flex-shrink-0 text-amber-500 text-lg leading-none" role="img">⚠️</span>
+<p class="text-sm font-medium text-neutral-800 leading-snug">
+              Gross margin is 2% - pricing may need attention.
+            </p>
+</div>
+<!-- Item 2: Net Profit Notice -->
+<div class="flex items-start space-x-3.5">
+<div class="flex-shrink-0 text-[#0a6358] pt-0.5">
+<svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<p class="text-sm font-medium text-neutral-800 leading-snug">
+              Net profit is 10,017.00 ብር after operating expenses.
+            </p>
+</div>
+<!-- Item 3: Top Seller Notice -->
+<div class="flex items-start space-x-3.5">
+<div class="flex-shrink-0 text-[#0a6358] pt-0.5">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 20 20">
+<path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+</svg>
+</div>
+<p class="text-sm font-medium text-neutral-800 leading-snug">
+              Lenovopc is your top seller with 4 units sold.
+            </p>
+</div>
+</div>
+</section>
+<!-- END: DecisionInsights -->
+</main>
+<!-- BEGIN: BottomNavigation -->
+<nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur-md border-t border-neutral-100 px-3 py-2 flex items-center justify-between z-30" data-purpose="bottom-nav">
+<!-- Home Tab -->
+<a class="flex flex-col items-center justify-center flex-1 py-1 text-neutral-400 hover:text-neutral-600 transition" href="#">
+<svg class="w-6 h-6 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[10px] font-bold tracking-wider mt-1 uppercase">HOME</span>
+</a>
+<!-- Sell Tab -->
+<a class="flex flex-col items-center justify-center flex-1 py-1 text-neutral-400 hover:text-neutral-600 transition" href="#">
+<svg class="w-6 h-6 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[10px] font-bold tracking-wider mt-1 uppercase">SELL</span>
+</a>
+<!-- Inventory Tab -->
+<a class="flex flex-col items-center justify-center flex-1 py-1 text-neutral-400 hover:text-neutral-600 transition" href="#">
+<svg class="w-6 h-6 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[10px] font-bold tracking-wider mt-1 uppercase">INVENTORY</span>
+</a>
+<!-- Expenses Tab -->
+<a class="flex flex-col items-center justify-center flex-1 py-1 text-neutral-400 hover:text-neutral-600 transition" href="#">
+<svg class="w-6 h-6 stroke-[1.8]" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+<span class="text-[10px] font-bold tracking-wider mt-1 uppercase">EXPENSES</span>
+</a>
+<!-- Profile Tab (Active Pill Highlight) -->
+<div class="flex-1 flex justify-center py-0.5">
+<a class="flex flex-col items-center justify-center w-20 py-1.5 px-2 rounded-2xl bg-[#0a6358] text-white shadow-md shadow-[#0a6358]/20 transition" href="#">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 20 20">
+<path clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" fill-rule="evenodd"></path>
+</svg>
+<span class="text-[10px] font-extrabold tracking-wider uppercase mt-0.5">PROFILE</span>
+</a>
+</div>
+</nav>
+<!-- END: BottomNavigation -->
+</div>
+</body></html>

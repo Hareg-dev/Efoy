@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="am"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>እፎይ - Splash Screen</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Noto Sans Ethiopic -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config -->
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#0c1a2f',
+              dark: '#081323',
+              circle: '#0b203c',
+              green: '#0ec254',
+              mint: '#5be48f',
+              softGreen: '#61e095'
+            }
+          },
+          fontFamily: {
+            ethiopic: ['"Noto Sans Ethiopic"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+<!-- BEGIN: Custom Styles -->
+<style data-purpose="custom-layout">
+    /* Base setup for full height mobile viewport */
+    body {
+      font-family: 'Noto Sans Ethiopic', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      background: radial-gradient(circle at 50% 40%, #0e2039 0%, #091322 100%);
+    }
+
+    /* Soft ambient glow behind the logo container */
+    .logo-container-glow {
+      box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.25),
+                  0 20px 30px -15px rgba(0, 0, 0, 0.6);
+    }
+
+    /* Gradient typography for Ethiopian title */
+    .text-brand-gradient {
+      background: linear-gradient(180deg, #ffffff 10%, #75f0a0 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+  </style>
+<style data-purpose="animations">
+    /* Subtle pulsing effect for the pagination dots */
+    @keyframes subtlePulse {
+      0%, 100% {
+        opacity: 0.35;
+        transform: scale(0.9);
+      }
+      50% {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+    }
+
+    .dot-pulse-1 {
+      animation: subtlePulse 2s ease-in-out infinite;
+    }
+    .dot-pulse-2 {
+      animation: subtlePulse 2s ease-in-out 0.3s infinite;
+    }
+    .dot-pulse-3 {
+      animation: subtlePulse 2s ease-in-out 0.6s infinite;
+    }
+  </style>
+<!-- END: Custom Styles -->
+</head>
+<body class="h-full flex flex-col justify-between items-center text-white overflow-hidden antialiased">
+<!-- BEGIN: TopSpacer -->
+<!-- Top spacing anchor for mobile screen balance -->
+<div class="w-full pt-12" data-purpose="top-spacing"></div>
+<!-- END: TopSpacer -->
+<!-- BEGIN: CenterContent -->
+<!-- Main brand presentation area -->
+<main class="flex flex-col items-center justify-center w-full px-6 max-w-sm -mt-10" data-purpose="splash-content">
+<!-- BEGIN: BrandLogoCard -->
+<!-- White squircle card containing vector recreation of the brand icon -->
+<div class="w-[218px] h-[142px] bg-white rounded-[26px] p-4 flex items-center justify-center logo-container-glow transform transition-transform" data-purpose="logo-card">
+<svg aria-label="Efoy Brand Icon" class="w-full h-full" fill="none" role="img" viewbox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<!-- Smooth gradient for the speed bars -->
+<lineargradient id="speedGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+<stop offset="0%" stop-color="#05c052"></stop>
+<stop offset="100%" stop-color="#12d85f"></stop>
+</lineargradient>
+<!-- Subtle shade for checkmark stem -->
+<lineargradient id="checkGradient" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#14e164"></stop>
+<stop offset="100%" stop-color="#02b84d"></stop>
+</lineargradient>
+</defs>
+<!-- Left Speed Lines -->
+<!-- Top rounded bar -->
+<path d="M 24 38 L 126 38" stroke="url(#speedGradient)" stroke-linecap="round" stroke-width="15"></path>
+<!-- Middle rounded bar -->
+<path d="M 12 76 L 68 76" stroke="url(#speedGradient)" stroke-linecap="round" stroke-width="15"></path>
+<!-- Bottom rounded bar -->
+<path d="M 24 114 L 84 114" stroke="url(#speedGradient)" stroke-linecap="round" stroke-width="15"></path>
+<!-- Circular Arc (Dark Navy) -->
+<path d="M 174 44 C 158 35 138 36 122 47 C 103 60 94 82 98 105 C 102 126 120 142 142 144 C 156 145 169 140 180 131 C 193 120 200 102 198 84" stroke="#0b1e38" stroke-linecap="round" stroke-width="18"></path>
+<!-- Integrated Green Checkmark Overlay -->
+<path d="M 134 94 L 158 118 L 210 52" stroke="url(#checkGradient)" stroke-linecap="round" stroke-linejoin="round" stroke-width="17"></path>
+</svg>
+</div>
+<!-- END: BrandLogoCard -->
+<!-- BEGIN: BrandTypography -->
+<!-- Amharic title and slogan text group -->
+<div class="mt-14 text-center flex flex-col items-center" data-purpose="typography-block">
+<!-- Main Brand Name in Amharic: እፎይ -->
+<h1 class="text-[52px] leading-tight font-extrabold tracking-wide text-brand-gradient drop-shadow-sm select-none">
+        እፎይ
+      </h1>
+<!-- Slogan Subtitle in Amharic: በእፎይ እርፍ ይበሉ -->
+<p class="mt-4 text-[16.5px] font-medium tracking-normal text-[#6be39b] opacity-95">
+        በእፎይ እርፍ ይበሉ
+      </p>
+</div>
+<!-- END: BrandTypography -->
+</main>
+<!-- END: CenterContent -->
+<!-- BEGIN: BottomPaginationDots -->
+<!-- Three subtle indicators at the bottom with soft breathing animation -->
+<footer class="w-full pb-14 flex items-center justify-center space-x-2.5" data-purpose="footer-dots">
+<span aria-hidden="true" class="w-2 h-2 rounded-full bg-[#18cf67] dot-pulse-1"></span>
+<span aria-hidden="true" class="w-2.5 h-2.5 rounded-full bg-[#1ed76f] dot-pulse-2 shadow-sm shadow-emerald-500/50"></span>
+<span aria-hidden="true" class="w-2 h-2 rounded-full bg-[#18cf67] dot-pulse-3"></span>
+</footer>
+<!-- END: BottomPaginationDots -->
+</body></html>
