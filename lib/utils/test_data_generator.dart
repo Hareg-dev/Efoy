@@ -63,21 +63,22 @@ class TestDataGenerator {
 
     final sale = SaleModel()
       ..saleItems = [
-        SaleItemModel()
+        SaleLineItem()
           ..productId = products[0].id
           ..productName = products[0].name
           ..quantity = 3
           ..unitPrice = 20.0
-          ..costPrice = 15.0
-          ..subtotal = 60.0
-          ..profit = 15.0,
+          ..costAtSale = 15.0
+          ..subtotal = 60.0,
       ]
       ..totalAmount = 60.0
-      ..totalProfit = 15.0
-      ..paymentMethod = 'Cash'
+      ..totalCost = 45.0
+      ..grossProfit = 15.0
+      ..paymentMethod = PaymentMethod.cash
       ..amountReceived = 100.0
       ..changeGiven = 40.0
-      ..timestamp = DateTime.now()
+      ..saleDate = DateTime.now()
+      ..createdAt = DateTime.now()
       ..isVoided = false;
 
     await isar.writeTxn(() async {
@@ -91,17 +92,19 @@ class TestDataGenerator {
         ..title = 'Rent'
         ..amount = 5000.0
         ..description = 'Monthly shop rent'
-        ..descriptionAm = 'ወርሃዊ የሱቅ ኪራይ'
-        ..isCapitalExpenditure = false
-        ..timestamp = DateTime.now(),
+        ..category = ExpenseCategory.rent
+        ..expenseDate = DateTime.now()
+        ..createdAt = DateTime.now()
+        ..isRestockExpense = false,
       
       ExpenseModel()
         ..title = 'Salaries'
         ..amount = 3000.0
         ..description = 'Staff salary'
-        ..descriptionAm = 'የሰራተኛ ደሞዝ'
-        ..isCapitalExpenditure = false
-        ..timestamp = DateTime.now(),
+        ..category = ExpenseCategory.salaries
+        ..expenseDate = DateTime.now()
+        ..createdAt = DateTime.now()
+        ..isRestockExpense = false,
     ];
 
     await isar.writeTxn(() async {

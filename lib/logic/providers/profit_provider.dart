@@ -33,20 +33,20 @@ final netProfitProvider = FutureProvider<NetProfitData>((ref) async {
   // Get sales in period
   final sales = await isar.saleModels
       .filter()
-      .timestampGreaterThan(startDate)
+      .saleDateGreaterThan(startDate)
       .isVoidedEqualTo(false)
       .findAll();
   
   // Get operating expenses in period (exclude restock CapEx)
   final expenses = await isar.expenseModels
       .filter()
-      .timestampGreaterThan(startDate)
-      .isCapitalExpenditureEqualTo(false) // Only OpEx for profit
+      .expenseDateGreaterThan(startDate)
+      .isRestockExpenseEqualTo(false) // Only OpEx for profit
       .findAll();
   
   // Calculate totals
   final revenue = sales.fold<double>(0, (sum, sale) => sum + sale.totalAmount);
-  final salesProfit = sales.fold<double>(0, (sum, sale) => sum + sale.totalProfit);
+  final salesProfit = sales.fold<double>(0, (sum, sale) => sum + sale.grossProfit);
   final opex = expenses.fold<double>(0, (sum, expense) => sum + expense.amount);
   
   // Net Profit = Gross Profit from Sales - Operating Expenses
