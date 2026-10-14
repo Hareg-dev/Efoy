@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_theme.dart';
+import '../widgets/net_profit_card.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.neutralBg,
       body: SafeArea(
@@ -17,9 +19,9 @@ class HomeScreen extends StatelessWidget {
               floating: true,
               backgroundColor: AppColors.neutralBg,
               elevation: 0,
-              title: Column(
+              title: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
                     'Efoy',
                     style: TextStyle(
@@ -48,208 +50,106 @@ class HomeScreen extends StatelessWidget {
             ),
             
             // Content
-            SliverPadding(
-              padding: const EdgeInsets.all(AppTheme.spaceM),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Net Profit Card (Placeholder)
-                  _buildNetProfitCard(),
-                  
-                  const SizedBox(height: AppTheme.spaceM),
-                  
-                  // Quick Metrics
-                  Row(
+            SliverList(
+              delegate: SliverChildListDelegate([
+                // Net Profit Card (Real-time data)
+                const NetProfitCard(),
+                
+                const SizedBox(height: AppTheme.spaceM),
+                
+                // Quick Metrics
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceL),
+                  child: Row(
                     children: [
                       Expanded(
                         child: _buildMetricCard(
-                          icon: Icons.shopping_cart,
-                          label: 'Transactions',
-                          value: '0',
-                          color: AppColors.infoBlue,
+                          icon: Icons.trending_up,
+                          label: 'Revenue',
+                          value: '0 ብር',
+                          color: AppColors.successGreen,
                         ),
                       ),
                       const SizedBox(width: AppTheme.spaceM),
                       Expanded(
                         child: _buildMetricCard(
-                          icon: Icons.receipt,
-                          label: 'Sales',
+                          icon: Icons.inventory_2_outlined,
+                          label: 'Stock Value',
                           value: '0 ብር',
-                          color: AppColors.successGreen,
+                          color: AppColors.infoBlue,
                         ),
                       ),
                     ],
                   ),
-                  
-                  const SizedBox(height: AppTheme.spaceL),
-                  
-                  // Critical Alerts Section
-                  const Text(
-                    'Critical Alerts',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                
+                const SizedBox(height: AppTheme.spaceL),
+                
+                // Critical Alerts Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceL),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Critical Alerts',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spaceM),
+                      _buildAlertCard(
+                        icon: Icons.warning_amber_rounded,
+                        title: 'Low Stock Items',
+                        subtitle: '0 products need restocking',
+                        color: AppColors.warningAmber,
+                      ),
+                    ],
                   ),
-                  
-                  const SizedBox(height: AppTheme.spaceM),
-                  
-                  _buildAlertCard(
-                    icon: Icons.warning_amber,
-                    title: 'No alerts',
-                    subtitle: 'Your business is running smoothly',
-                    color: AppColors.successGreen,
+                ),
+                
+                const SizedBox(height: AppTheme.spaceL),
+                
+                // Activity Feed
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppTheme.spaceL),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Recent Activity',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              // TODO: View all activity
+                            },
+                            child: const Text('View All'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTheme.spaceM),
+                      _buildEmptyState(),
+                    ],
                   ),
-                  
-                  const SizedBox(height: AppTheme.spaceL),
-                  
-                  // Activity Feed
-                  const Text(
-                    'Today\'s Activity',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  
-                  const SizedBox(height: AppTheme.spaceM),
-                  
-                  _buildEmptyState(),
-                ]),
-              ),
+                ),
+                
+                const SizedBox(height: AppTheme.spaceXL),
+              ]),
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildNetProfitCard() {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.spaceL),
-      decoration: BoxDecoration(
-        gradient: AppColors.profitGradient,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.successGreen.withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Net Profit',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'SYNCED',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: AppTheme.spaceM),
-          
-          // Period Filters
-          Row(
-            children: [
-              _buildPeriodChip('Today', true),
-              const SizedBox(width: 8),
-              _buildPeriodChip('Week', false),
-              const SizedBox(width: 8),
-              _buildPeriodChip('Month', false),
-            ],
-          ),
-          
-          const SizedBox(height: AppTheme.spaceL),
-          
-          // Net Profit Amount
-          const Text(
-            '0.00 ብር',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 36,
-              fontWeight: FontWeight.w900,
-              height: 1.2,
-            ),
-          ),
-          
-          const SizedBox(height: AppTheme.spaceS),
-          
-          // Revenue vs Expenses
-          Row(
-            children: const [
-              Icon(Icons.trending_up, color: Colors.white70, size: 16),
-              SizedBox(width: 4),
-              Text(
-                'Revenue: 0 ብር',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-              Spacer(),
-              Icon(Icons.trending_down, color: Colors.white70, size: 16),
-              SizedBox(width: 4),
-              Text(
-                'Expenses: 0 ብር',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPeriodChip(String label, bool isSelected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 6,
-      ),
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: isSelected ? AppColors.successGreen : Colors.white,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
+  
   Widget _buildMetricCard({
     required IconData icon,
     required String label,
@@ -272,8 +172,19 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: AppTheme.spaceS),
           Text(
             label,
             style: const TextStyle(
@@ -293,7 +204,7 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
+  
   Widget _buildAlertCard({
     required IconData icon,
     required String title,
@@ -303,26 +214,37 @@ class HomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceM),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
         border: Border.all(
           color: color.withOpacity(0.3),
-          width: 1.5,
         ),
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: AppTheme.spaceM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
                     fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -336,40 +258,53 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          Icon(
+            Icons.chevron_right,
+            color: color,
+          ),
         ],
       ),
     );
   }
-
+  
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceXL),
-      child: Column(
-        children: const [
-          Icon(
-            Icons.inbox_outlined,
-            size: 64,
-            color: AppColors.neutralGray,
-          ),
-          SizedBox(height: 16),
-          Text(
-            'No activity yet',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        border: Border.all(
+          color: AppColors.neutralGray.withOpacity(0.2),
+        ),
+      ),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 48,
+              color: AppColors.textTertiary.withOpacity(0.5),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Start making sales to see your activity here',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textTertiary,
+            const SizedBox(height: AppTheme.spaceM),
+            const Text(
+              'No recent activity',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            const Text(
+              'Sales and transactions will appear here',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
