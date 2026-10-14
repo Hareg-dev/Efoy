@@ -1,11 +1,11 @@
 ﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import '../../data/models/product.dart';
-import '../../data/models/sale.dart';
-import '../../data/models/expense.dart';
-import '../../data/models/restock_log.dart';
-import '../../data/models/license.dart';
+import '../../data/models/product_model.dart';
+import '../../data/models/sale_model.dart';
+import '../../data/models/expense_model.dart';
+import '../../data/models/restock_log_model.dart';
+import '../../data/models/license_model.dart';
 import '../../data/models/user_profile.dart';
 
 // Isar database provider
@@ -13,11 +13,11 @@ final isarProvider = Provider<Future<Isar>>((ref) async {
   final dir = await getApplicationDocumentsDirectory();
   return Isar.open(
     [
-      ProductSchema,
-      SaleSchema,
-      ExpenseSchema,
-      RestockLogSchema,
-      LicenseSchema,
+      ProductModelSchema,
+      SaleModelSchema,
+      ExpenseModelSchema,
+      RestockLogModelSchema,
+      LicenseModelSchema,
       UserProfileSchema,
     ],
     directory: dir.path,

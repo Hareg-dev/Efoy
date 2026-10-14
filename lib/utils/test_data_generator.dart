@@ -1,15 +1,15 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
-import '../data/models/product.dart';
-import '../data/models/sale.dart';
-import '../data/models/expense.dart';
+import '../data/models/product_model.dart';
+import '../data/models/sale_model.dart';
+import '../data/models/expense_model.dart';
 import '../logic/providers/database_provider.dart';
 
 class TestDataGenerator {
   static Future<void> generateSampleProducts(Isar isar) async {
     final products = [
-      Product()
+      ProductModel()
         ..name = 'Coca-Cola 500ml'
         ..nameAm = 'ኮካ ኮላ 500ሚሊ'
         ..description = 'Refreshing drink'
@@ -23,7 +23,7 @@ class TestDataGenerator {
         ..createdAt = DateTime.now()
         ..updatedAt = DateTime.now(),
       
-      Product()
+      ProductModel()
         ..name = 'Milk 1L'
         ..nameAm = 'ወተት 1ሊትር'
         ..description = 'Fresh milk'
@@ -37,7 +37,7 @@ class TestDataGenerator {
         ..createdAt = DateTime.now()
         ..updatedAt = DateTime.now(),
       
-      Product()
+      ProductModel()
         ..name = 'Sugar 1kg'
         ..nameAm = 'ስኳር 1ኪሎ'
         ..description = 'White sugar'
@@ -53,17 +53,17 @@ class TestDataGenerator {
     ];
 
     await isar.writeTxn(() async {
-      await isar.products.putAll(products);
+      await isar.productModels.putAll(products);
     });
   }
 
   static Future<void> generateSampleSales(Isar isar) async {
-    final products = await isar.products.where().findAll();
+    final products = await isar.productModels.where().findAll();
     if (products.isEmpty) return;
 
-    final sale = Sale()
+    final sale = SaleModel()
       ..saleItems = [
-        SaleItem()
+        SaleItemModel()
           ..productId = products[0].id
           ..productName = products[0].name
           ..quantity = 3
@@ -81,22 +81,22 @@ class TestDataGenerator {
       ..isVoided = false;
 
     await isar.writeTxn(() async {
-      await isar.sales.put(sale);
+      await isar.saleModels.put(sale);
     });
   }
 
   static Future<void> generateSampleExpenses(Isar isar) async {
     final expenses = [
-      Expense()
-        ..category = 'Rent'
+      ExpenseModel()
+        ..title = 'Rent'
         ..amount = 5000.0
         ..description = 'Monthly shop rent'
         ..descriptionAm = 'ወርሃዊ የሱቅ ኪራይ'
         ..isCapitalExpenditure = false
         ..timestamp = DateTime.now(),
       
-      Expense()
-        ..category = 'Salaries'
+      ExpenseModel()
+        ..title = 'Salaries'
         ..amount = 3000.0
         ..description = 'Staff salary'
         ..descriptionAm = 'የሰራተኛ ደሞዝ'
@@ -105,7 +105,7 @@ class TestDataGenerator {
     ];
 
     await isar.writeTxn(() async {
-      await isar.expenses.putAll(expenses);
+      await isar.expenseModels.putAll(expenses);
     });
   }
 
@@ -117,10 +117,10 @@ class TestDataGenerator {
 
   static Future<void> clearAllData(Isar isar) async {
     await isar.writeTxn(() async {
-      await isar.products.clear();
-      await isar.sales.clear();
-      await isar.expenses.clear();
-      await isar.restockLogs.clear();
+      await isar.productModels.clear();
+      await isar.saleModels.clear();
+      await isar.expenseModels.clear();
+      await isar.restockLogModels.clear();
     });
   }
 }

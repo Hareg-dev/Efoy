@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
-import '../../data/models/sale.dart';
-import '../../data/models/expense.dart';
+import '../../data/models/sale_model.dart';
+import '../../data/models/expense_model.dart';
 import 'database_provider.dart';
 
 // Period filter enum
@@ -31,14 +31,14 @@ final netProfitProvider = FutureProvider<NetProfitData>((ref) async {
   }
   
   // Get sales in period
-  final sales = await isar.sales
+  final sales = await isar.saleModels
       .filter()
       .timestampGreaterThan(startDate)
       .isVoidedEqualTo(false)
       .findAll();
   
   // Get operating expenses in period (exclude restock CapEx)
-  final expenses = await isar.expenses
+  final expenses = await isar.expenseModels
       .filter()
       .timestampGreaterThan(startDate)
       .isCapitalExpenditureEqualTo(false) // Only OpEx for profit

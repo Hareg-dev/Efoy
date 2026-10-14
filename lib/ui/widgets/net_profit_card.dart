@@ -109,7 +109,7 @@ class NetProfitCard extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  CurrencyFormatter.format(data.netProfit, language: language),
+                  CurrencyFormatter.formatBirr(data.netProfit),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 40,
@@ -146,7 +146,7 @@ class NetProfitCard extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    CurrencyFormatter.format(data.revenue, language: language),
+                    CurrencyFormatter.formatBirr(data.revenue),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -179,7 +179,7 @@ class NetProfitCard extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    CurrencyFormatter.format(data.opex, language: language),
+                    CurrencyFormatter.formatBirr(data.opex),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
