@@ -1,54 +1,76 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../core/constants/app_colors.dart';
 
-// Storage instance
+/// Theme and locale preferences.
+///
+/// Preferences are persisted with [FlutterSecureStorage] (already a project
+/// dependency) instead of shared_preferences. Functionally equivalent for
+/// this app and avoids an extra platform plugin.
 const _storage = FlutterSecureStorage();
 
-// Dark mode provider (persisted)
-final darkModeProvider = StateNotifierProvider<DarkModeNotifier, bool>((ref) {
-  return DarkModeNotifier();
+const _themeModeKey = 'theme_mode';
+const _languageKey = 'language';
+
+/// Light / dark / system theme selection.
+final themeModeProvider =
+    StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
+  return ThemeModeNotifier();
 });
 
-class DarkModeNotifier extends StateNotifier<bool> {
-  DarkModeNotifier() : super(false) {
-    _loadDarkMode();
+class ThemeModeNotifier extends StateNotifier<ThemeMode> {
+  ThemeModeNotifier() : super(ThemeMode.system) {
+    _load();
   }
 
-  Future<void> _loadDarkMode() async {
-    final value = await _storage.read(key: 'dark_mode');
-    state = value == 'true';
-  }
-
-  Future<void> toggle() async {
-    state = !state;
-    await _storage.write(key: 'dark_mode', value: state.toString());
-  }
-}
-
-// Language provider (persisted: 'en' or 'am')
-final languageProvider = StateNotifierProvider<LanguageNotifier, String>((ref) {
-  return LanguageNotifier();
-});
-
-class LanguageNotifier extends StateNotifier<String> {
-  LanguageNotifier() : super('en') {
-    _loadLanguage();
-  }
-
-  Future<void> _loadLanguage() async {
-    final value = await _storage.read(key: 'language');
-    state = value ?? 'en';
-  }
-
-  Future<void> setLanguage(String lang) async {
-    if (lang == 'en' || lang == 'am') {
-      state = lang;
-      await _storage.write(key: 'language', value: lang);
+  Future<void> _load() async {
+    final value = await _storage.read(key: _themeModeKey);
+    switch (value) {
+      case 'light':
+        state = ThemeMode.light;
+      case 'dark':
+        state = ThemeMode.dark;
+      case 'system':
+      default:
+        state = ThemeMode.system;
     }
   }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    state = mode;
+    await _storage.write(key: _themeModeKey, value: mode.name);
+  }
 }
 
-// Accent color provider (optional customization)
-final accentColorProvider = StateProvider<Color>((ref) => AppColors.primaryTeal);
+/// Persisted locale (English / Amharic).
+final localeProvider = StateNotifierProvider<LocaleNotifier, Locale>((ref) {
+  return LocaleNotifier();
+});
+
+class LocaleNotifier extends StateNotifier<Locale> {
+  LocaleNotifier() : super(const Locale('en')) {
+    _load();
+  }
+
+  Future<void> _load() async {
+    final value = await _storage.read(key: _languageKey);
+    state = Locale(value == 'am' ? 'am' : 'en');
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    state = locale;
+    await _storage.write(key: _languageKey, value: locale.languageCode);
+  }
+
+  Future<void> setLanguage(String languageCode) {
+    return setLocale(Locale(languageCode == 'am' ? 'am' : 'en'));
+  }
+}
+
+/// Convenience provider for widgets that only need the language code.
+final languageProvider = Provider<String>((ref) {
+  return ref.watch(localeProvider).languageCode;
+});
+
+/// Accent color provider (optional customization).
+final accentColorProvider = StateProvider<Color>((ref) => const Color(0xFF0A6358));

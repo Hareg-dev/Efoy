@@ -1,10 +1,12 @@
-import 'package:isar/isar.dart';
+﻿import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/product_model.dart';
 import '../models/sale_model.dart';
 import '../models/expense_model.dart';
 import '../models/restock_log_model.dart';
 import '../models/license_model.dart';
+import '../models/user_profile.dart';
+import '../models/held_order_model.dart';
 
 /// Efoy Local Database Manager using Isar
 class AppDatabase {
@@ -33,6 +35,8 @@ class AppDatabase {
         ExpenseModelSchema,
         RestockLogModelSchema,
         LicenseModelSchema,
+        UserProfileSchema,
+        HeldOrderModelSchema,
       ],
       directory: dir.path,
       name: 'efoy_retail_db',
@@ -74,6 +78,8 @@ class AppDatabase {
     final expenses = await isar.expenseModels.where().findAll();
     final restockLogs = await isar.restockLogModels.where().findAll();
     final licenses = await isar.licenseModels.where().findAll();
+    final userProfiles = await isar.userProfiles.where().findAll();
+    final heldOrders = await isar.heldOrderModels.where().findAll();
 
     return {
       'products': products.map((p) => p.toJson()).toList(),
@@ -81,6 +87,8 @@ class AppDatabase {
       'expenses': expenses.map((e) => e.toJson()).toList(),
       'restockLogs': restockLogs.map((r) => r.toJson()).toList(),
       'licenses': licenses.map((l) => l.toJson()).toList(),
+      'userProfiles': userProfiles.map((u) => u.toJson()).toList(),
+      'heldOrders': heldOrders.map((h) => h.toJson()).toList(),
     };
   }
 
@@ -121,12 +129,28 @@ class AppDatabase {
         await isar.restockLogModels.putAll(restockLogs);
       }
 
+      // Import user profiles
+      if (data.containsKey('userProfiles')) {
+        final userProfiles = data['userProfiles']!
+            .map((json) => UserProfile.fromJson(json))
+            .toList();
+        await isar.userProfiles.putAll(userProfiles);
+      }
+
       // Import licenses
       if (data.containsKey('licenses')) {
         final licenses = data['licenses']!
             .map((json) => LicenseModel.fromJson(json))
             .toList();
         await isar.licenseModels.putAll(licenses);
+      }
+
+      // Import held orders
+      if (data.containsKey('heldOrders')) {
+        final heldOrders = data['heldOrders']!
+            .map((json) => HeldOrderModel.fromJson(json))
+            .toList();
+        await isar.heldOrderModels.putAll(heldOrders);
       }
     });
   }

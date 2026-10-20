@@ -1,55 +1,48 @@
-﻿import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
+import '../data/models/expense_model.dart';
 import '../data/models/product_model.dart';
 import '../data/models/sale_model.dart';
-import '../data/models/expense_model.dart';
-import '../logic/providers/database_provider.dart';
 
 class TestDataGenerator {
   static Future<void> generateSampleProducts(Isar isar) async {
+    final now = DateTime.now();
     final products = [
-      ProductModel()
-        ..name = 'Coca-Cola 500ml'
-        ..nameAm = 'ኮካ ኮላ 500ሚሊ'
-        ..description = 'Refreshing drink'
-        ..category = 'Beverages'
-        ..barcode = '5449000000996'
-        ..sellingPrice = 20.0
-        ..costPrice = 15.0
-        ..weightedAverageCost = 15.0
-        ..stockQuantity = 100
-        ..lowStockThreshold = 20
-        ..createdAt = DateTime.now()
-        ..updatedAt = DateTime.now(),
-      
-      ProductModel()
-        ..name = 'Milk 1L'
-        ..nameAm = 'ወተት 1ሊትር'
-        ..description = 'Fresh milk'
-        ..category = 'Dairy'
-        ..barcode = '8901234567890'
-        ..sellingPrice = 80.0
-        ..costPrice = 65.0
-        ..weightedAverageCost = 65.0
-        ..stockQuantity = 50
-        ..lowStockThreshold = 15
-        ..createdAt = DateTime.now()
-        ..updatedAt = DateTime.now(),
-      
-      ProductModel()
-        ..name = 'Sugar 1kg'
-        ..nameAm = 'ስኳር 1ኪሎ'
-        ..description = 'White sugar'
-        ..category = 'Groceries'
-        ..barcode = '5555555555555'
-        ..sellingPrice = 85.0
-        ..costPrice = 70.0
-        ..weightedAverageCost = 70.0
-        ..stockQuantity = 5
-        ..lowStockThreshold = 10
-        ..createdAt = DateTime.now()
-        ..updatedAt = DateTime.now(),
+      ProductModel(
+        name: 'Coca-Cola 500ml',
+        description: 'Refreshing drink',
+        category: 'Beverages',
+        barcode: '5449000000996',
+        sellingPrice: 20.0,
+        costPrice: 15.0,
+        currentStock: 100,
+        lowStockThreshold: 20,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      ProductModel(
+        name: 'Milk 1L',
+        description: 'Fresh milk',
+        category: 'Dairy',
+        barcode: '8901234567890',
+        sellingPrice: 80.0,
+        costPrice: 65.0,
+        currentStock: 50,
+        lowStockThreshold: 15,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      ProductModel(
+        name: 'Sugar 1kg',
+        description: 'White sugar',
+        category: 'Groceries',
+        barcode: '5555555555555',
+        sellingPrice: 85.0,
+        costPrice: 70.0,
+        currentStock: 5,
+        lowStockThreshold: 10,
+        createdAt: now,
+        updatedAt: now,
+      ),
     ];
 
     await isar.writeTxn(() async {
@@ -61,25 +54,28 @@ class TestDataGenerator {
     final products = await isar.productModels.where().findAll();
     if (products.isEmpty) return;
 
-    final sale = SaleModel()
-      ..saleItems = [
-        SaleLineItem()
-          ..productId = products[0].id
-          ..productName = products[0].name
-          ..quantity = 3
-          ..unitPrice = 20.0
-          ..costAtSale = 15.0
-          ..subtotal = 60.0,
-      ]
-      ..totalAmount = 60.0
-      ..totalCost = 45.0
-      ..grossProfit = 15.0
-      ..paymentMethod = PaymentMethod.cash
-      ..amountReceived = 100.0
-      ..changeGiven = 40.0
-      ..saleDate = DateTime.now()
-      ..createdAt = DateTime.now()
-      ..isVoided = false;
+    final item = SaleLineItem()
+      ..productId = products[0].id
+      ..productName = products[0].name
+      ..quantity = 3
+      ..unitPrice = 20.0
+      ..unitCost = 15.0
+      ..lineTotal = 60.0
+      ..lineCost = 45.0
+      ..lineProfit = 15.0;
+
+    final sale = SaleModel(
+      saleDate: DateTime.now(),
+      transactionId: 'sale-demo-001',
+      lineItems: [item],
+      totalAmount: 60.0,
+      totalCost: 45.0,
+      grossProfit: 15.0,
+      paymentMethod: PaymentMethod.cash,
+      amountReceived: 100.0,
+      changeGiven: 40.0,
+      createdAt: DateTime.now(),
+    );
 
     await isar.writeTxn(() async {
       await isar.saleModels.put(sale);
@@ -87,24 +83,24 @@ class TestDataGenerator {
   }
 
   static Future<void> generateSampleExpenses(Isar isar) async {
+    final now = DateTime.now();
     final expenses = [
-      ExpenseModel()
-        ..title = 'Rent'
-        ..amount = 5000.0
-        ..description = 'Monthly shop rent'
-        ..category = ExpenseCategory.rent
-        ..expenseDate = DateTime.now()
-        ..createdAt = DateTime.now()
-        ..isRestockExpense = false,
-      
-      ExpenseModel()
-        ..title = 'Salaries'
-        ..amount = 3000.0
-        ..description = 'Staff salary'
-        ..category = ExpenseCategory.salaries
-        ..expenseDate = DateTime.now()
-        ..createdAt = DateTime.now()
-        ..isRestockExpense = false,
+      ExpenseModel(
+        title: 'Rent',
+        description: 'Monthly shop rent',
+        amount: 5000.0,
+        category: ExpenseCategory.rent,
+        expenseDate: now,
+        createdAt: now,
+      ),
+      ExpenseModel(
+        title: 'Salaries',
+        description: 'Staff salary',
+        amount: 3000.0,
+        category: ExpenseCategory.salary,
+        expenseDate: now,
+        createdAt: now,
+      ),
     ];
 
     await isar.writeTxn(() async {
@@ -123,7 +119,6 @@ class TestDataGenerator {
       await isar.productModels.clear();
       await isar.saleModels.clear();
       await isar.expenseModels.clear();
-      await isar.restockLogModels.clear();
     });
   }
 }

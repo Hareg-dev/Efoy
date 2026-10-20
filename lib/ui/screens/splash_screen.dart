@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:isar/isar.dart';
 import 'dart:async';
 import '../../core/constants/app_colors.dart';
+import '../../data/local/app_database.dart';
+import '../../data/models/license_model.dart';
+import '../../data/models/user_profile.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,6 +18,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  Timer? _navigationTimer;
 
   @override
   void initState() {
@@ -42,21 +48,53 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     _animationController.forward();
 
     // Navigate after delay
-    _navigateToNextScreen();
+    _navigationTimer = Timer(const Duration(seconds: 2), _navigateToNextScreen);
   }
 
   Future<void> _navigateToNextScreen() async {
-    await Future.delayed(const Duration(seconds: 3));
-    
     if (!mounted) return;
 
-    // TODO: Check license status here
-    // For now, navigate to auth screen
-    Navigator.of(context).pushReplacementNamed('/auth');
+    final hasSession = await _hasActiveSession();
+    if (!mounted) return;
+
+    if (hasSession) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else {
+      Navigator.of(context).pushReplacementNamed('/auth');
+    }
+  }
+
+  /// Initializes the license/database layer in the background and checks
+  /// whether a completed onboarding profile exists.
+  Future<bool> _hasActiveSession() async {
+    try {
+      final database = AppDatabase();
+      final isar = await database.init();
+
+      // Refresh license expiry state in the background.
+      final license = await isar.licenseModels
+          .filter()
+          .isActiveEqualTo(true)
+          .findFirst();
+      if (license != null && DateTime.now().isAfter(license.expiresAt)) {
+        await isar.writeTxn(() async {
+          license
+            ..isExpired = true
+            ..isActive = false;
+          await isar.licenseModels.put(license);
+        });
+      }
+
+      final profile = await isar.userProfiles.where().findFirst();
+      return profile?.passwordHash != null;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
   void dispose() {
+    _navigationTimer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -112,12 +150,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryGreen.withOpacity(0.25),
+            color: AppColors.primaryGreen.withValues(alpha: 0.25),
             blurRadius: 40,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.6),
+            color: Colors.black.withValues(alpha: 0.6),
             blurRadius: 30,
             offset: const Offset(0, 20),
           ),
@@ -141,9 +179,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ).createShader(bounds),
-          child: const Text(
+          child: Text(
             'እፎይ',
-            style: TextStyle(
+            style: GoogleFonts.notoSansEthiopic(
               fontSize: 52,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.2,
@@ -152,16 +190,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             ),
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
-        // Tagline in Amharic
-        const Text(
+
+        Text(
           'በእፎይ እርፍ ይበሉ',
-          style: TextStyle(
+          style: GoogleFonts.notoSansEthiopic(
             fontSize: 16.5,
             fontWeight: FontWeight.w500,
-            color: Color(0xFF6BE39B),
+            color: const Color(0xFF6BE39B),
             letterSpacing: 0.5,
           ),
         ),
@@ -170,41 +207,44 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLoadingDots() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(3, (index) {
-        return AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            final delay = index * 0.2;
-            final value = (_animationController.value - delay).clamp(0.0, 1.0);
-            final opacity = (0.35 + (value * 0.65)).clamp(0.35, 1.0);
-            final scale = 0.9 + (value * 0.2);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(3, (index) {
+          return AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              final delay = index * 0.3;
+              final value = (_animationController.value - delay).clamp(0.0, 1.0);
+              final opacity = (0.35 + (value * 0.65)).clamp(0.35, 1.0);
+              final scale = 0.9 + (value * 0.2);
 
-            return Container(
-              margin: EdgeInsets.symmetric(
-                horizontal: index == 1 ? 5 : 4,
-              ),
-              width: index == 1 ? 10 : 8,
-              height: index == 1 ? 10 : 8,
-              decoration: BoxDecoration(
-                color: AppColors.primaryGreen.withOpacity(opacity),
-                shape: BoxShape.circle,
-                boxShadow: index == 1
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primaryGreen.withOpacity(0.5),
-                          blurRadius: 4,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
-              transform: Matrix4.identity()..scale(scale),
-            );
-          },
-        );
-      }),
+              final isCenter = index == 1;
+              return Container(
+                margin: EdgeInsets.symmetric(horizontal: isCenter ? 5 : 4),
+                width: isCenter ? 10 : 8,
+                height: isCenter ? 10 : 8,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGreen.withValues(alpha: opacity),
+                  shape: BoxShape.circle,
+                  boxShadow: isCenter
+                      ? [
+                          BoxShadow(
+                            color: AppColors.primaryGreen.withValues(alpha: 0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+                transform: Matrix4.identity()
+                  ..scaleByDouble(scale, scale, scale, 1.0),
+              );
+            },
+          );
+        }),
+      ),
     );
   }
 }

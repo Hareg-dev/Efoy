@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../security/device_identity.dart';
 import '../security/license_verifier.dart';
 
@@ -9,54 +10,54 @@ class TestHelpers {
   /// 
   /// Run this in main() during development to get license keys
   static Future<void> generateTestLicenses() async {
-    print('\n═══════════════════════════════════════════');
-    print('🔑 EFOY TEST LICENSE GENERATOR');
-    print('═══════════════════════════════════════════\n');
+    debugPrint('\n═══════════════════════════════════════════');
+    debugPrint('🔑 EFOY TEST LICENSE GENERATOR');
+    debugPrint('═══════════════════════════════════════════\n');
     
     final deviceId = await DeviceIdentity.getDeviceId();
     final deviceInfo = await DeviceIdentity.getDeviceInfo();
     
-    print('📱 Device Information:');
-    print('   Platform: ${deviceInfo.platform}');
-    print('   Model: ${deviceInfo.model}');
-    print('   Manufacturer: ${deviceInfo.manufacturer}');
-    print('\n📍 Device ID: $deviceId');
-    print('═══════════════════════════════════════════\n');
+    debugPrint('📱 Device Information:');
+    debugPrint('   Platform: ${deviceInfo.platform}');
+    debugPrint('   Model: ${deviceInfo.model}');
+    debugPrint('   Manufacturer: ${deviceInfo.manufacturer}');
+    debugPrint('\n📍 Device ID: $deviceId');
+    debugPrint('═══════════════════════════════════════════\n');
     
     // Generate 7-day trial
     final trialKey = LicenseVerifier.generateLicenseKey(
       deviceId: deviceId,
       expiryDate: DateTime.now().add(const Duration(days: 7)),
     );
-    print('🎫 7-Day Trial License:');
-    print('   $trialKey\n');
+    debugPrint('🎫 7-Day Trial License:');
+    debugPrint('   $trialKey\n');
     
     // Generate 30-day license
     final monthlyKey = LicenseVerifier.generateLicenseKey(
       deviceId: deviceId,
       expiryDate: DateTime.now().add(const Duration(days: 30)),
     );
-    print('📅 30-Day Monthly License:');
-    print('   $monthlyKey\n');
+    debugPrint('📅 30-Day Monthly License:');
+    debugPrint('   $monthlyKey\n');
     
     // Generate 1-year license
     final yearlyKey = LicenseVerifier.generateLicenseKey(
       deviceId: deviceId,
       expiryDate: DateTime.now().add(const Duration(days: 365)),
     );
-    print('📆 1-Year License:');
-    print('   $yearlyKey\n');
+    debugPrint('📆 1-Year License:');
+    debugPrint('   $yearlyKey\n');
     
     // Generate lifetime license
     final lifetimeKey = LicenseVerifier.generateLicenseKey(
       deviceId: deviceId,
       expiryDate: DateTime.now().add(const Duration(days: 36500)), // 100 years
     );
-    print('♾️  Lifetime License:');
-    print('   $lifetimeKey\n');
+    debugPrint('♾️  Lifetime License:');
+    debugPrint('   $lifetimeKey\n');
     
-    print('═══════════════════════════════════════════');
-    print('✅ Copy any key above and paste in the app');
-    print('═══════════════════════════════════════════\n');
+    debugPrint('═══════════════════════════════════════════');
+    debugPrint('✅ Copy any key above and paste in the app');
+    debugPrint('═══════════════════════════════════════════\n');
   }
 }

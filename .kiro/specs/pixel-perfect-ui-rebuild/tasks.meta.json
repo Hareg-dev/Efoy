@@ -1,0 +1,29 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Setup core theme system and constants": [
+      {
+        "executionId": "0bcdea91-b78d-4a6a-a12b-f59f357f04be",
+        "chatSessionId": "sess_6546665b-d662-4257-a5f5-05da82cebc90",
+        "timestamp": 1792039827100
+      },
+      {
+        "executionId": "0bcdea91-b78d-4a6a-a12b-f59f357f04be",
+        "chatSessionId": "sess_6546665b-d662-4257-a5f5-05da82cebc90",
+        "timestamp": 1792039928024
+      }
+    ],
+    "2.1 Create `lib/data/local/app_database.dart` with Isar initialization": [
+      {
+        "executionId": "0bcdea91-b78d-4a6a-a12b-f59f357f04be",
+        "chatSessionId": "sess_6546665b-d662-4257-a5f5-05da82cebc90",
+        "timestamp": 1792039946856
+      },
+      {
+        "executionId": "0bcdea91-b78d-4a6a-a12b-f59f357f04be",
+        "chatSessionId": "sess_6546665b-d662-4257-a5f5-05da82cebc90",
+        "timestamp": 1792039968415
+      }
+    ]
+  }
+}
