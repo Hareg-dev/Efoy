@@ -12,6 +12,7 @@ import '../../logic/providers/cart_provider.dart';
 import '../../logic/providers/repository_providers.dart';
 import '../widgets/cart_sheet.dart';
 import '../widgets/product_card.dart';
+import '../widgets/screen_header.dart';
 
 class SellScreen extends ConsumerStatefulWidget {
   const SellScreen({super.key, this.onSaleComplete});
@@ -106,7 +107,6 @@ class _SellScreenState extends ConsumerState<SellScreen> {
     final cart = ref.watch(cartProvider);
     final heldCount = ref.watch(heldOrdersProvider).valueOrNull?.length ?? 0;
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -120,39 +120,21 @@ class _SellScreenState extends ConsumerState<SellScreen> {
                 AppTheme.spaceL,
                 AppTheme.spaceS,
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('SELL', 'ሽያጭ'),
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: scheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          context.tr(
-                            'Tap a product to add it to the cart',
-                            'ለጋሪ ለመጨመር እቃውን ይንኩ',
-                          ),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              child: ScreenHeader(
+                title: context.tr('SELL', 'ሽያጭ'),
+                subtitle: context.tr(
+                  'Tap a product to add it to the cart',
+                  'ለጋሪ ለመጨመር እቃውን ይንኩ',
+                ),
+                actions: [
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
                       IconButton.filledTonal(
-                        tooltip: context.tr('Hold / resume order', 'ትዕዛዝ አቆይ'),
+                        tooltip: context.tr(
+                          'Hold / resume order',
+                          'ትዕዛዝ አቆይ',
+                        ),
                         onPressed: _handleHold,
                         icon: const Icon(Icons.pause_circle_outline),
                       ),

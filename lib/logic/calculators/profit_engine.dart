@@ -1,8 +1,8 @@
 /// Profit & Financial Calculation Engine
-/// 
+///
 /// Correctly separates Capital Expenditure (Restocking) from
 /// Operating Expenses to prevent false daily loss reporting.
-/// 
+///
 /// Key Principle:
 /// - Restocking = Asset Conversion (Cash → Inventory)
 /// - Operating Expenses = Daily overhead (Rent, Salary, etc.)
@@ -10,14 +10,23 @@
 class ProfitEngine {
   ProfitEngine._();
 
+  /// Gross margin below which pricing is too thin to sustain a shop; used by
+  /// the health report on the dashboard.
+  static const double minimumHealthyGrossMargin = 0.20;
+
+  /// Gross margin below which today's trading is an emergency rather than a
+  /// reminder. Kept separate from [minimumHealthyGrossMargin] on purpose: the
+  /// dashboard only shouts when the day is effectively earning nothing.
+  static const double criticalGrossMargin = 0.05;
+
   /// Calculate Gross Profit for a period
-  /// 
+  ///
   /// Formula: Gross Profit = Revenue - COGS
-  /// 
+  ///
   /// Parameters:
   /// - [revenue]: Total sales revenue
   /// - [cogs]: Cost of Goods Sold (WAC × quantity sold)
-  /// 
+  ///
   /// Returns: Gross profit amount
   static double calculateGrossProfit({
     required double revenue,
@@ -27,16 +36,16 @@ class ProfitEngine {
   }
 
   /// Calculate Net Profit for a period
-  /// 
+  ///
   /// Formula: Net Profit = Gross Profit - Operating Expenses
-  /// 
+  ///
   /// CRITICAL: Restock expenses are NOT included in operating expenses.
   /// They are capital conversions tracked separately.
-  /// 
+  ///
   /// Parameters:
   /// - [grossProfit]: Gross profit from sales
   /// - [operatingExpenses]: Daily overhead (excludes restocking)
-  /// 
+  ///
   /// Returns: Net profit amount
   static double calculateNetProfit({
     required double grossProfit,
@@ -46,13 +55,13 @@ class ProfitEngine {
   }
 
   /// Calculate Gross Profit Margin as percentage
-  /// 
+  ///
   /// Formula: (Gross Profit / Revenue) × 100
-  /// 
+  ///
   /// Parameters:
   /// - [grossProfit]: Gross profit amount
   /// - [revenue]: Total revenue
-  /// 
+  ///
   /// Returns: Margin percentage (0.0 to 1.0)
   static double calculateGrossProfitMargin({
     required double grossProfit,
@@ -63,13 +72,13 @@ class ProfitEngine {
   }
 
   /// Calculate Net Profit Margin as percentage
-  /// 
+  ///
   /// Formula: (Net Profit / Revenue) × 100
-  /// 
+  ///
   /// Parameters:
   /// - [netProfit]: Net profit amount
   /// - [revenue]: Total revenue
-  /// 
+  ///
   /// Returns: Margin percentage (0.0 to 1.0)
   static double calculateNetProfitMargin({
     required double netProfit,
@@ -80,16 +89,16 @@ class ProfitEngine {
   }
 
   /// Calculate Operating Expense Ratio
-  /// 
+  ///
   /// Formula: (Operating Expenses / Revenue) × 100
-  /// 
+  ///
   /// Indicates what percentage of revenue goes to overhead.
   /// Lower is generally better.
-  /// 
+  ///
   /// Parameters:
   /// - [operatingExpenses]: Total OpEx (excludes restocking)
   /// - [revenue]: Total revenue
-  /// 
+  ///
   /// Returns: Ratio percentage (0.0 to 1.0+)
   static double calculateOpExRatio({
     required double operatingExpenses,
@@ -100,13 +109,13 @@ class ProfitEngine {
   }
 
   /// Calculate Return on Investment (ROI)
-  /// 
+  ///
   /// Formula: (Net Profit / Total Investment) × 100
-  /// 
+  ///
   /// Parameters:
   /// - [netProfit]: Net profit for period
   /// - [totalInvestment]: Total capital invested (inventory value)
-  /// 
+  ///
   /// Returns: ROI percentage (0.0 to 1.0+)
   static double calculateROI({
     required double netProfit,
@@ -117,7 +126,7 @@ class ProfitEngine {
   }
 
   /// Calculate comprehensive financial summary
-  /// 
+  ///
   /// Returns a complete breakdown of financial health metrics
   static FinancialSummary calculateFinancialSummary({
     required double revenue,
@@ -125,10 +134,7 @@ class ProfitEngine {
     required double operatingExpenses,
     required double inventoryValue,
   }) {
-    final grossProfit = calculateGrossProfit(
-      revenue: revenue,
-      cogs: cogs,
-    );
+    final grossProfit = calculateGrossProfit(revenue: revenue, cogs: cogs);
 
     final netProfit = calculateNetProfit(
       grossProfit: grossProfit,
@@ -170,7 +176,7 @@ class ProfitEngine {
   }
 
   /// Analyze profit health and generate insights
-  /// 
+  ///
   /// Returns descriptive status and recommendations
   static ProfitHealthStatus analyzeProfitHealth({
     required double netProfit,
@@ -181,13 +187,15 @@ class ProfitEngine {
     if (netProfit < 0) {
       return ProfitHealthStatus(
         status: HealthStatus.critical,
-        message: 'Business is losing money. Operating expenses exceed gross profit.',
-        recommendation: 'Reduce overhead costs or increase sales volume and pricing.',
+        message:
+            'Business is losing money. Operating expenses exceed gross profit.',
+        recommendation:
+            'Reduce overhead costs or increase sales volume and pricing.',
       );
     }
 
     // Warning: Low gross margin
-    if (grossMargin < 0.20) {
+    if (grossMargin < minimumHealthyGrossMargin) {
       return ProfitHealthStatus(
         status: HealthStatus.warning,
         message: 'Profit margin is below 20%. Product pricing may be too low.',
@@ -209,7 +217,8 @@ class ProfitEngine {
       return ProfitHealthStatus(
         status: HealthStatus.healthy,
         message: 'Business is performing well with healthy margins.',
-        recommendation: 'Maintain current strategy and look for growth opportunities.',
+        recommendation:
+            'Maintain current strategy and look for growth opportunities.',
       );
     }
 
@@ -262,9 +271,4 @@ class ProfitHealthStatus {
   });
 }
 
-enum HealthStatus {
-  critical,
-  warning,
-  moderate,
-  healthy,
-}
+enum HealthStatus { critical, warning, moderate, healthy }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/licensing/license_gate.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/models/product_model.dart';
@@ -78,6 +79,15 @@ class _RestockModalState extends ConsumerState<RestockModal> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(result);
+    } on LicenseRequiredException {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error = context.tr(
+          'Your license or trial has ended. Renew in Profile to restock.',
+          'ፈቃድዎ ወይም ሙከራዎ አብቋል። እንደገና ለመሙላት በመገለጫ ውስጥ ያድሱ።',
+        );
+      });
     } catch (error) {
       if (!mounted) return;
       setState(() {

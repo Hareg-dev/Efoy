@@ -3,9 +3,16 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/models/product_model.dart';
+import '../calculators/inventory_valuation.dart';
 import 'repository_providers.dart';
 
-enum StockFilter { all, inStock, lowStock, outOfStock }
+/// Stock buckets shown as filter pills.
+///
+/// [needsRestock] is deliberately the wider bucket (`stock <= threshold`,
+/// sold-out included) because that is the list a merchant acts on; the same
+/// rule backs the low-stock card and the home alerts so no two screens can
+/// report a different count. [outOfStock] is the drill-down of that list.
+enum StockFilter { all, inStock, needsRestock, outOfStock }
 
 class InventoryState {
   const InventoryState({
@@ -30,7 +37,8 @@ class InventoryState {
   List<ProductModel> get products {
     final query = searchQuery.trim().toLowerCase();
     return allProducts.where((product) {
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           product.name.toLowerCase().contains(query) ||
           (product.barcode?.toLowerCase().contains(query) ?? false);
       if (!matchesQuery) return false;
@@ -40,28 +48,30 @@ class InventoryState {
           return true;
         case StockFilter.inStock:
           return product.currentStock > 0;
-        case StockFilter.lowStock:
-          return product.isLowStock;
+        case StockFilter.needsRestock:
+          return product.needsRestock;
         case StockFilter.outOfStock:
           return product.isOutOfStock;
       }
     }).toList();
   }
 
-  List<ProductModel> get lowStockProducts {
-    return allProducts
-        .where((product) =>
-            product.currentStock <= product.lowStockThreshold)
-        .toList()
+  /// Everything the merchant should reorder, lowest stock first.
+  List<ProductModel> get needsRestockProducts {
+    return allProducts.where((product) => product.needsRestock).toList()
       ..sort((a, b) => a.currentStock.compareTo(b.currentStock));
   }
 
-  int get lowStockCount => lowStockProducts.length;
+  int get needsRestockCount => needsRestockProducts.length;
 
   int get outOfStockCount =>
       allProducts.where((product) => product.isOutOfStock).length;
 
   int get activeCount => allProducts.length;
+
+  /// Total units sitting on the shelves.
+  int get stockUnits =>
+      allProducts.fold<int>(0, (sum, product) => sum + product.currentStock);
 
   InventoryState copyWith({
     List<ProductModel>? allProducts,
@@ -80,8 +90,8 @@ class InventoryState {
 
 final inventoryProvider =
     StateNotifierProvider<InventoryNotifier, InventoryState>((ref) {
-  return InventoryNotifier(ref);
-});
+      return InventoryNotifier(ref);
+    });
 
 class InventoryNotifier extends StateNotifier<InventoryState> {
   InventoryNotifier(this._ref) : super(InventoryState.empty) {
@@ -118,3 +128,9 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
     state = state.copyWith(filter: filter);
   }
 }
+
+/// Whole-stock valuation (units, cost value, liquidity value) for the live
+/// product list. Same calculator the Excel report uses.
+final inventoryValuationProvider = Provider<InventoryValuation>((ref) {
+  return InventoryValuation.of(ref.watch(inventoryProvider).allProducts);
+});

@@ -8,16 +8,16 @@ class AppStrings {
   static const String taglineEnglish = 'Finally, business made easy.';
   static const String taglineAmharic = 'በእፎይ እርፍ ይበሉ';
 
-  // Navigation Labels
-  static const Map<String, String> navHome = {
-    'en': 'Home',
-    'am': 'ዋና ገጽ',
-  };
+  // Support. One number does both jobs: it is the Telebirr account to pay and
+  // the line to call or SMS for an installation ID check or a new activation
+  // key. The key comes back from the same number.
+  static const String supportPhone = '0988545894';
+  static const String supportTeam = '@Haregdev Team';
 
-  static const Map<String, String> navSell = {
-    'en': 'Sell',
-    'am': 'ሽያጭ',
-  };
+  // Navigation Labels
+  static const Map<String, String> navHome = {'en': 'Home', 'am': 'ዋና ገጽ'};
+
+  static const Map<String, String> navSell = {'en': 'Sell', 'am': 'ሽያጭ'};
 
   static const Map<String, String> navInventory = {
     'en': 'Inventory',
@@ -29,61 +29,31 @@ class AppStrings {
     'am': 'ወጪዎች',
   };
 
-  static const Map<String, String> navProfile = {
-    'en': 'Profile',
-    'am': 'መገለጫ',
-  };
+  static const Map<String, String> navProfile = {'en': 'Profile', 'am': 'መገለጫ'};
 
   // Common Actions
-  static const Map<String, String> save = {
-    'en': 'Save',
-    'am': 'አስቀምጥ',
-  };
+  static const Map<String, String> save = {'en': 'Save', 'am': 'አስቀምጥ'};
 
-  static const Map<String, String> cancel = {
-    'en': 'Cancel',
-    'am': 'ሰርዝ',
-  };
+  static const Map<String, String> cancel = {'en': 'Cancel', 'am': 'ሰርዝ'};
 
-  static const Map<String, String> delete = {
-    'en': 'Delete',
-    'am': 'ደምስስ',
-  };
+  static const Map<String, String> delete = {'en': 'Delete', 'am': 'ደምስስ'};
 
-  static const Map<String, String> edit = {
-    'en': 'Edit',
-    'am': 'አስተካክል',
-  };
+  static const Map<String, String> edit = {'en': 'Edit', 'am': 'አስተካክል'};
 
-  static const Map<String, String> add = {
-    'en': 'Add',
-    'am': 'አክል',
-  };
+  static const Map<String, String> add = {'en': 'Add', 'am': 'አክል'};
 
-  static const Map<String, String> search = {
-    'en': 'Search',
-    'am': 'ፈልግ',
-  };
+  static const Map<String, String> search = {'en': 'Search', 'am': 'ፈልግ'};
 
   // Currency
   static const String birrSymbol = 'ብር';
   static const String birrSymbolEn = 'Birr';
 
   // Time Periods
-  static const Map<String, String> today = {
-    'en': 'Today',
-    'am': 'ዛሬ',
-  };
+  static const Map<String, String> today = {'en': 'Today', 'am': 'ዛሬ'};
 
-  static const Map<String, String> week = {
-    'en': 'Week',
-    'am': 'ሳምንት',
-  };
+  static const Map<String, String> week = {'en': 'Week', 'am': 'ሳምንት'};
 
-  static const Map<String, String> month = {
-    'en': 'Month',
-    'am': 'ወር',
-  };
+  static const Map<String, String> month = {'en': 'Month', 'am': 'ወር'};
 
   // Financial Metrics
   static const Map<String, String> netProfit = {
@@ -96,15 +66,9 @@ class AppStrings {
     'am': 'አጠቃላይ ትርፍ',
   };
 
-  static const Map<String, String> revenue = {
-    'en': 'Revenue',
-    'am': 'ገቢ',
-  };
+  static const Map<String, String> revenue = {'en': 'Revenue', 'am': 'ገቢ'};
 
-  static const Map<String, String> expenses = {
-    'en': 'Expenses',
-    'am': 'ወጪዎች',
-  };
+  static const Map<String, String> expenses = {'en': 'Expenses', 'am': 'ወጪዎች'};
 
   static const Map<String, String> cogs = {
     'en': 'Cost of Goods Sold',
@@ -122,36 +86,18 @@ class AppStrings {
     'am': 'ወደ ጋሪ አክል',
   };
 
-  static const Map<String, String> cart = {
-    'en': 'Cart',
-    'am': 'ጋሪ',
-  };
+  static const Map<String, String> cart = {'en': 'Cart', 'am': 'ጋሪ'};
 
-  static const Map<String, String> quantity = {
-    'en': 'Quantity',
-    'am': 'ብዛት',
-  };
+  static const Map<String, String> quantity = {'en': 'Quantity', 'am': 'ብዛት'};
 
-  static const Map<String, String> price = {
-    'en': 'Price',
-    'am': 'ዋጋ',
-  };
+  static const Map<String, String> price = {'en': 'Price', 'am': 'ዋጋ'};
 
-  static const Map<String, String> total = {
-    'en': 'Total',
-    'am': 'ድምር',
-  };
+  static const Map<String, String> total = {'en': 'Total', 'am': 'ድምር'};
 
   // Payment Methods
-  static const Map<String, String> cash = {
-    'en': 'Cash',
-    'am': 'ጥሬ ገንዘብ',
-  };
+  static const Map<String, String> cash = {'en': 'Cash', 'am': 'ጥሬ ገንዘብ'};
 
-  static const Map<String, String> telebirr = {
-    'en': 'Telebirr',
-    'am': 'ቴሌብር',
-  };
+  static const Map<String, String> telebirr = {'en': 'Telebirr', 'am': 'ቴሌብር'};
 
   // Inventory
   static const Map<String, String> addProduct = {
@@ -164,10 +110,7 @@ class AppStrings {
     'am': 'እንደገና ሙላ',
   };
 
-  static const Map<String, String> stock = {
-    'en': 'Stock',
-    'am': 'መጠን',
-  };
+  static const Map<String, String> stock = {'en': 'Stock', 'am': 'መጠን'};
 
   static const Map<String, String> lowStock = {
     'en': 'Low Stock',
@@ -180,10 +123,7 @@ class AppStrings {
   };
 
   // Alerts & Status
-  static const Map<String, String> synced = {
-    'en': 'SYNCED',
-    'am': 'ተመሳስሏል',
-  };
+  static const Map<String, String> synced = {'en': 'SYNCED', 'am': 'ተመሳስሏል'};
 
   static const Map<String, String> criticalAlerts = {
     'en': 'Critical Alerts',
@@ -196,15 +136,9 @@ class AppStrings {
   };
 
   // Expense Categories
-  static const Map<String, String> rent = {
-    'en': 'Rent',
-    'am': 'ኪራይ',
-  };
+  static const Map<String, String> rent = {'en': 'Rent', 'am': 'ኪራይ'};
 
-  static const Map<String, String> salary = {
-    'en': 'Salary',
-    'am': 'ደሞዝ',
-  };
+  static const Map<String, String> salary = {'en': 'Salary', 'am': 'ደሞዝ'};
 
   static const Map<String, String> transport = {
     'en': 'Transport',
@@ -222,10 +156,7 @@ class AppStrings {
     'am': 'ጨለማ ገጽታ',
   };
 
-  static const Map<String, String> language = {
-    'en': 'Language',
-    'am': 'ቋንቋ',
-  };
+  static const Map<String, String> language = {'en': 'Language', 'am': 'ቋንቋ'};
 
   static const Map<String, String> accentColor = {
     'en': 'Accent Color',
@@ -243,15 +174,42 @@ class AppStrings {
     'am': 'የፈቃድ ቁልፍ',
   };
 
-  static const Map<String, String> activate = {
-    'en': 'Activate',
-    'am': 'አንቃ',
+  static const Map<String, String> activate = {'en': 'Activate', 'am': 'አንቃ'};
+
+  static const Map<String, String> login = {'en': 'Login', 'am': 'ግባ'};
+
+  // Product categories offered by the add-product picker. The English word is
+  // what gets stored on the product; screens translate it for display.
+  static const List<String> productCategories = [
+    'Beverages',
+    'Snacks',
+    'Grains & Flour',
+    'Dairy',
+    'Household',
+    'Personal Care',
+    'Cleaning',
+    'Stationery',
+    'Electronics',
+    'Other',
+  ];
+
+  static const Map<String, String> productCategoryAmharic = {
+    'Beverages': 'መጠጦች',
+    'Snacks': 'ብስብሻ',
+    'Grains & Flour': 'ገቢና ዱቄት',
+    'Dairy': 'ወተትና ጥራጥሬ',
+    'Household': 'የቤት ዕቃ',
+    'Personal Care': 'የግል እንክብካቤ',
+    'Cleaning': 'ንጽህና',
+    'Stationery': 'የጽሑፍ ቁሳቁስ',
+    'Electronics': 'ኤሌክትሮኒክስ',
+    'Other': 'ሌላ',
   };
 
-  static const Map<String, String> login = {
-    'en': 'Login',
-    'am': 'ግባ',
-  };
+  static String productCategoryLabel(String category, String languageCode) {
+    if (languageCode != 'am') return category;
+    return productCategoryAmharic[category] ?? category;
+  }
 
   // Helper function to get string by language code
   static String get(Map<String, String> stringMap, String languageCode) {

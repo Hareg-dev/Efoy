@@ -33,7 +33,7 @@ class _MainLayoutState extends State<MainLayout> {
   late final List<Widget> _screens = [
     HomeScreen(
       onQuickSell: () => _onTabTapped(1),
-      onOpenProfile: () => _onTabTapped(4),
+      onOpenSettings: _openSettings,
     ),
     SellScreen(
       onSaleComplete: () => _onTabTapped(0),
@@ -42,6 +42,10 @@ class _MainLayoutState extends State<MainLayout> {
     const ExpensesScreen(),
     const ProfileScreen(),
   ];
+
+  void _openSettings() {
+    Navigator.of(context).pushNamed('/settings');
+  }
 
   void _onTabTapped(int index) {
     if (index == _currentIndex) return;

@@ -87,23 +87,28 @@ const ProductModelSchema = CollectionSchema(
       name: r'name',
       type: IsarType.string,
     ),
-    r'potentialProfit': PropertySchema(
+    r'needsRestock': PropertySchema(
       id: 14,
+      name: r'needsRestock',
+      type: IsarType.bool,
+    ),
+    r'potentialProfit': PropertySchema(
+      id: 15,
       name: r'potentialProfit',
       type: IsarType.double,
     ),
     r'profitMargin': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'profitMargin',
       type: IsarType.double,
     ),
     r'sellingPrice': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'sellingPrice',
       type: IsarType.double,
     ),
     r'updatedAt': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -216,10 +221,11 @@ void _productModelSerialize(
   writer.writeDouble(offsets[11], object.liquidityValue);
   writer.writeLong(offsets[12], object.lowStockThreshold);
   writer.writeString(offsets[13], object.name);
-  writer.writeDouble(offsets[14], object.potentialProfit);
-  writer.writeDouble(offsets[15], object.profitMargin);
-  writer.writeDouble(offsets[16], object.sellingPrice);
-  writer.writeDateTime(offsets[17], object.updatedAt);
+  writer.writeBool(offsets[14], object.needsRestock);
+  writer.writeDouble(offsets[15], object.potentialProfit);
+  writer.writeDouble(offsets[16], object.profitMargin);
+  writer.writeDouble(offsets[17], object.sellingPrice);
+  writer.writeDateTime(offsets[18], object.updatedAt);
 }
 
 ProductModel _productModelDeserialize(
@@ -239,8 +245,8 @@ ProductModel _productModelDeserialize(
     isDeleted: reader.readBoolOrNull(offsets[8]) ?? false,
     lowStockThreshold: reader.readLongOrNull(offsets[12]) ?? 10,
     name: reader.readString(offsets[13]),
-    sellingPrice: reader.readDouble(offsets[16]),
-    updatedAt: reader.readDateTime(offsets[17]),
+    sellingPrice: reader.readDouble(offsets[17]),
+    updatedAt: reader.readDateTime(offsets[18]),
   );
   object.id = id;
   return object;
@@ -282,12 +288,14 @@ P _productModelDeserializeProp<P>(
     case 13:
       return (reader.readString(offset)) as P;
     case 14:
-      return (reader.readDouble(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 15:
       return (reader.readDouble(offset)) as P;
     case 16:
       return (reader.readDouble(offset)) as P;
     case 17:
+      return (reader.readDouble(offset)) as P;
+    case 18:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1851,6 +1859,16 @@ extension ProductModelQueryFilter
   }
 
   QueryBuilder<ProductModel, ProductModel, QAfterFilterCondition>
+      needsRestockEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'needsRestock',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<ProductModel, ProductModel, QAfterFilterCondition>
       potentialProfitEqualTo(
     double value, {
     double epsilon = Query.epsilon,
@@ -2291,6 +2309,19 @@ extension ProductModelQuerySortBy
     });
   }
 
+  QueryBuilder<ProductModel, ProductModel, QAfterSortBy> sortByNeedsRestock() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'needsRestock', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ProductModel, ProductModel, QAfterSortBy>
+      sortByNeedsRestockDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'needsRestock', Sort.desc);
+    });
+  }
+
   QueryBuilder<ProductModel, ProductModel, QAfterSortBy>
       sortByPotentialProfit() {
     return QueryBuilder.apply(this, (query) {
@@ -2536,6 +2567,19 @@ extension ProductModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<ProductModel, ProductModel, QAfterSortBy> thenByNeedsRestock() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'needsRestock', Sort.asc);
+    });
+  }
+
+  QueryBuilder<ProductModel, ProductModel, QAfterSortBy>
+      thenByNeedsRestockDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'needsRestock', Sort.desc);
+    });
+  }
+
   QueryBuilder<ProductModel, ProductModel, QAfterSortBy>
       thenByPotentialProfit() {
     return QueryBuilder.apply(this, (query) {
@@ -2683,6 +2727,12 @@ extension ProductModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<ProductModel, ProductModel, QDistinct> distinctByNeedsRestock() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'needsRestock');
+    });
+  }
+
   QueryBuilder<ProductModel, ProductModel, QDistinct>
       distinctByPotentialProfit() {
     return QueryBuilder.apply(this, (query) {
@@ -2801,6 +2851,12 @@ extension ProductModelQueryProperty
   QueryBuilder<ProductModel, String, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<ProductModel, bool, QQueryOperations> needsRestockProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'needsRestock');
     });
   }
 

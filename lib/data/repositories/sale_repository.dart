@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 
+import '../../core/licensing/license_gate.dart';
 import '../models/product_model.dart';
 import '../models/sale_model.dart';
 import 'base_repository.dart';
@@ -27,9 +28,12 @@ class SalesTotals {
 }
 
 class SaleRepository implements BaseRepository<SaleModel> {
-  SaleRepository(this._isar);
+  SaleRepository(this._isar, this._licenseGate);
 
   final Isar _isar;
+
+  /// Enforces the offline licensing policy before any sale mutation.
+  final LicenseGate _licenseGate;
 
   @override
   Future<SaleModel?> getById(int id) => _isar.saleModels.get(id);
@@ -54,6 +58,7 @@ class SaleRepository implements BaseRepository<SaleModel> {
 
   @override
   Future<SaleModel> create(SaleModel entity) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.recordSale);
     await _isar.writeTxn(() async {
       entity.id = await _isar.saleModels.put(entity);
     });
@@ -63,6 +68,7 @@ class SaleRepository implements BaseRepository<SaleModel> {
   /// Sales are immutable; updating replaces the record.
   @override
   Future<SaleModel> update(SaleModel entity) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.recordSale);
     await _isar.writeTxn(() async {
       await _isar.saleModels.put(entity);
     });
@@ -74,6 +80,7 @@ class SaleRepository implements BaseRepository<SaleModel> {
   Future<void> delete(int id) => voidSale(id);
 
   Future<void> voidSale(int id) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.voidSale);
     await _isar.writeTxn(() async {
       final sale = await _isar.saleModels.get(id);
       if (sale == null || sale.isVoided) return;
@@ -88,6 +95,7 @@ class SaleRepository implements BaseRepository<SaleModel> {
   /// write transaction. Any validation failure rolls the whole transaction
   /// back, so stock and sales can never diverge.
   Future<SaleModel> createWithStockUpdate(SaleModel sale) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.recordSale);
     if (sale.lineItems.isEmpty) {
       throw RepositoryException('Cannot record a sale with no line items.');
     }

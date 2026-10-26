@@ -14,8 +14,9 @@ import 'repository_providers.dart';
 
 enum ProfitPeriod { today, week, month }
 
-final profitPeriodProvider =
-    StateProvider<ProfitPeriod>((ref) => ProfitPeriod.today);
+final profitPeriodProvider = StateProvider<ProfitPeriod>(
+  (ref) => ProfitPeriod.today,
+);
 
 final netProfitProvider = StreamProvider<NetProfitData>((ref) async* {
   final isar = await ref.watch(databaseProvider.future);
@@ -37,13 +38,14 @@ final netProfitProvider = StreamProvider<NetProfitData>((ref) async* {
       yield await _loadNetProfit(saleRepository, expenseRepository, period);
     }
   } finally {
-    await Future.wait(subscriptions.map((subscription) => subscription.cancel()));
+    await Future.wait(
+      subscriptions.map((subscription) => subscription.cancel()),
+    );
     await changes.close();
   }
 });
 
-final dashboardSummaryProvider =
-    StreamProvider<DashboardSummary>((ref) async* {
+final dashboardSummaryProvider = StreamProvider<DashboardSummary>((ref) async* {
   final isar = await ref.watch(databaseProvider.future);
   final changes = StreamController<void>();
   final subscriptions = <StreamSubscription<void>>[
@@ -60,7 +62,9 @@ final dashboardSummaryProvider =
       yield await _loadDashboardSummary(isar);
     }
   } finally {
-    await Future.wait(subscriptions.map((subscription) => subscription.cancel()));
+    await Future.wait(
+      subscriptions.map((subscription) => subscription.cancel()),
+    );
     await changes.close();
   }
 });
@@ -72,8 +76,10 @@ Future<NetProfitData> _loadNetProfit(
 ) async {
   final (startDate, endDate) = periodBounds(DateTime.now(), period);
   final sales = await saleRepository.getTotalsByPeriod(startDate, endDate);
-  final expenses =
-      await expenseRepository.getTotalsByPeriod(startDate, endDate);
+  final expenses = await expenseRepository.getTotalsByPeriod(
+    startDate,
+    endDate,
+  );
 
   return NetProfitData(
     netProfit: sales.grossProfit - expenses.operatingTotal,
@@ -100,19 +106,22 @@ Future<DashboardSummary> _loadDashboardSummary(Isar isar) async {
       .isDeletedEqualTo(false)
       .findAll();
 
-  final lowStockProducts = products
-      .where((product) => product.currentStock <= product.lowStockThreshold)
-      .toList()
-    ..sort((a, b) => a.currentStock.compareTo(b.currentStock));
-  final salesAmount =
-      sales.fold<double>(0, (sum, sale) => sum + sale.totalAmount);
-  final grossProfit =
-      sales.fold<double>(0, (sum, sale) => sum + sale.grossProfit);
+  final needsRestockProducts =
+      products.where((product) => product.needsRestock).toList()
+        ..sort((a, b) => a.currentStock.compareTo(b.currentStock));
+  final salesAmount = sales.fold<double>(
+    0,
+    (sum, sale) => sum + sale.totalAmount,
+  );
+  final grossProfit = sales.fold<double>(
+    0,
+    (sum, sale) => sum + sale.grossProfit,
+  );
 
   return DashboardSummary(
     transactionCount: sales.length,
     salesAmount: salesAmount,
-    lowStockProducts: lowStockProducts,
+    needsRestockProducts: needsRestockProducts,
     recentSales: sales.take(3).toList(),
     grossProfitMargin: salesAmount > 0 ? grossProfit / salesAmount : null,
   );
@@ -180,14 +189,16 @@ class DashboardSummary {
   const DashboardSummary({
     required this.transactionCount,
     required this.salesAmount,
-    required this.lowStockProducts,
+    required this.needsRestockProducts,
     required this.recentSales,
     required this.grossProfitMargin,
   });
 
   final int transactionCount;
   final double salesAmount;
-  final List<ProductModel> lowStockProducts;
+
+  /// Products at or below their threshold, sold-out ones included.
+  final List<ProductModel> needsRestockProducts;
   final List<SaleModel> recentSales;
   final double? grossProfitMargin;
 }

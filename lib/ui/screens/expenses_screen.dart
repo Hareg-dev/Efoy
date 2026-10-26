@@ -10,6 +10,7 @@ import '../../core/utils/l10n.dart';
 import '../../data/models/expense_model.dart';
 import '../../logic/providers/repository_providers.dart';
 import '../animations/pill_transition.dart';
+import '../widgets/screen_header.dart';
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
@@ -64,9 +65,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                 AppTheme.spaceM,
                 0,
               ),
-              sliver: SliverToBoxAdapter(
-                child: _SummaryCard(summary: summary),
-              ),
+              sliver: SliverToBoxAdapter(child: _SummaryCard(summary: summary)),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
@@ -175,9 +174,12 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   }
 
   Future<void> _openExpenseForm() async {
-    final saved = await showDialog<bool>(
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      builder: (_) => const _ExpenseFormDialog(),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _ExpenseFormSheet(),
     );
     if (!mounted || saved != true) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -201,53 +203,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr('EXPENSES', 'ወጪዎች'),
-                style: TextStyle(
-                  fontSize: 28,
-                  height: 1.1,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                context.tr(
-                  '$expenseCount expenses recorded',
-                  '$expenseCount ወጪዎች ተመዝግበዋል',
-                ),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        FilledButton.icon(
-          onPressed: onAdd,
-          style: FilledButton.styleFrom(
-            backgroundColor: scheme.primary,
-            foregroundColor: scheme.onPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
-            ),
-          ),
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(
-            context.tr('Add', 'ጨምር'),
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
+    return ScreenHeader(
+      title: context.tr('EXPENSES', 'ወጪዎች'),
+      subtitle: context.tr(
+        '$expenseCount expenses recorded',
+        '$expenseCount ወጪዎች ተመዝግበዋል',
+      ),
+      actions: [
+        HeaderActionButton(label: context.tr('Add', 'ጨምር'), onPressed: onAdd),
       ],
     );
   }
@@ -313,7 +276,7 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final change = summary.yesterdayOperating > 0
         ? (summary.todayOperating - summary.yesterdayOperating) /
-            summary.yesterdayOperating
+              summary.yesterdayOperating
         : null;
     final isUp = change != null && change > 0;
     final isDown = change != null && change < 0;
@@ -326,11 +289,7 @@ class _SummaryCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF12786B),
-            AppColors.primary,
-            AppColors.primaryDark,
-          ],
+          colors: [Color(0xFF12786B), AppColors.primary, AppColors.primaryDark],
         ),
         boxShadow: [
           BoxShadow(
@@ -399,8 +358,10 @@ class _SummaryCard extends StatelessWidget {
               const SizedBox(width: 8),
               if (change != null)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.13),
                     borderRadius: BorderRadius.circular(999),
@@ -412,14 +373,14 @@ class _SummaryCard extends StatelessWidget {
                         isUp
                             ? Icons.arrow_upward_rounded
                             : isDown
-                                ? Icons.arrow_downward_rounded
-                                : Icons.remove,
+                            ? Icons.arrow_downward_rounded
+                            : Icons.remove,
                         size: 12,
                         color: isUp
                             ? AppColors.rose300
                             : isDown
-                                ? AppColors.emerald200
-                                : Colors.white,
+                            ? AppColors.emerald200
+                            : Colors.white,
                       ),
                       const SizedBox(width: 3),
                       Text(
@@ -430,8 +391,8 @@ class _SummaryCard extends StatelessWidget {
                           color: isUp
                               ? AppColors.rose300
                               : isDown
-                                  ? AppColors.emerald200
-                                  : Colors.white,
+                              ? AppColors.emerald200
+                              : Colors.white,
                         ),
                       ),
                       const SizedBox(width: 3),
@@ -530,8 +491,7 @@ class _CategorySection extends StatelessWidget {
               selectedColor: scheme.primary.withValues(alpha: 0.12),
               selectedForeground: scheme.primary,
               unselectedForeground: scheme.onSurfaceVariant,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               onTap: onClear,
               child: Text(context.tr('All', 'ሁሉም')),
             ),
@@ -712,11 +672,7 @@ class _ExpenseTile extends StatelessWidget {
               color: color.withValues(alpha: isDark ? 0.18 : 0.12),
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(
-              categoryIcon(expense.category),
-              size: 20,
-              color: color,
-            ),
+            child: Icon(categoryIcon(expense.category), size: 20, color: color),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -795,20 +751,19 @@ class _ExpenseKindBadge extends StatelessWidget {
 // Add expense
 // ---------------------------------------------------------------------------
 
-class _ExpenseFormDialog extends ConsumerStatefulWidget {
-  const _ExpenseFormDialog();
+/// Category-first entry. The merchant picks what the money went to, and only
+/// then do the amount, note and date appear - one screen, one submit button.
+class _ExpenseFormSheet extends ConsumerStatefulWidget {
+  const _ExpenseFormSheet();
 
   @override
-  ConsumerState<_ExpenseFormDialog> createState() =>
-      _ExpenseFormDialogState();
+  ConsumerState<_ExpenseFormSheet> createState() => _ExpenseFormSheetState();
 }
 
-class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
+class _ExpenseFormSheetState extends ConsumerState<_ExpenseFormSheet> {
   final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
-  final _receiptController = TextEditingController();
-  ExpenseCategory _category = ExpenseCategory.other;
+  ExpenseCategory? _category;
   DateTime _date = DateTime.now();
   bool _saving = false;
   String? _error;
@@ -816,10 +771,22 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
   @override
   void dispose() {
     _titleController.dispose();
-    _descriptionController.dispose();
     _amountController.dispose();
-    _receiptController.dispose();
     super.dispose();
+  }
+
+  void _choose(ExpenseCategory category) {
+    final previous = _category;
+    setState(() {
+      _category = category;
+      _error = null;
+      // Replace only the auto-filled note, never what the merchant typed.
+      final note = _titleController.text.trim();
+      if (note.isEmpty ||
+          (previous != null && note == _categoryLabel(context, previous))) {
+        _titleController.text = _categoryLabel(context, category);
+      }
+    });
   }
 
   Future<void> _pickDate() async {
@@ -836,25 +803,26 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
   }
 
   Future<void> _save() async {
-    final title = _titleController.text.trim();
-    final amount = double.tryParse(_amountController.text.trim());
-
-    String? error;
-    if (title.isEmpty) {
-      error = context.tr(
-        'Expense title is required.',
-        'የወጪው ርዕስ ያስፈልጋል።',
+    final category = _category;
+    if (category == null) {
+      setState(
+        () => _error = context.tr('Pick a category first.', 'መጀመሪያ ምድብ ይምረጡ።'),
       );
-    } else if (amount == null || amount <= 0) {
-      error = context.tr(
-        'Enter an amount greater than zero.',
-        'ከዜሮ በላይ የሆነ መጠን ያስገቡ።',
-      );
-    }
-    if (error != null) {
-      setState(() => _error = error);
       return;
     }
+    final amount = double.tryParse(_amountController.text.trim());
+    if (amount == null || amount <= 0) {
+      setState(
+        () => _error = context.tr(
+          'Enter an amount greater than zero.',
+          'ከዜሮ በላይ የሆነ መጠን ያስገቡ።',
+        ),
+      );
+      return;
+    }
+
+    final note = _titleController.text.trim();
+    final title = note.isEmpty ? _categoryLabel(context, category) : note;
 
     setState(() {
       _saving = true;
@@ -863,20 +831,14 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
 
     try {
       final repository = await ref.read(expenseRepositoryProvider.future);
-      final isRestock = _category == ExpenseCategory.restock;
-      final receipt = _receiptController.text.trim();
       await repository.create(
         ExpenseModel(
           title: title,
-          description: _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-          amount: amount!,
-          category: _category,
+          amount: amount,
+          category: category,
           expenseDate: _date,
           createdAt: DateTime.now(),
-          receiptImageUrl: receipt.isEmpty ? null : receipt,
-          isRestockExpense: isRestock,
+          isRestockExpense: category == ExpenseCategory.restock,
         ),
       );
       if (!mounted) return;
@@ -895,7 +857,7 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final isRestock = _category == ExpenseCategory.restock;
+    final category = _category;
 
     InputDecoration decoration(String label, {IconData? icon}) {
       return InputDecoration(
@@ -909,160 +871,339 @@ class _ExpenseFormDialogState extends ConsumerState<_ExpenseFormDialog> {
       );
     }
 
-    return AlertDialog(
-      title: Text(
-        context.tr('Record expense', 'ወጪ መዝግብ'),
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.9,
       ),
-      content: SizedBox(
-        width: 480,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _titleController,
-                autofocus: true,
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                decoration: decoration(
-                  context.tr('Title *', 'ርዕስ *'),
-                  icon: Icons.receipt_long_outlined,
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusXLarge),
+          ),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(context).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    margin: const EdgeInsets.only(top: 10),
+                    decoration: BoxDecoration(
+                      color: scheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _descriptionController,
-                maxLines: 2,
-                decoration: decoration(
-                  context.tr('Description (optional)', 'መግለጫ (አማራጭ)'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.spaceM,
+                    14,
+                    AppTheme.spaceM,
+                    0,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              context.tr('Where did it go?', 'ወጪው የት ሄደ?'),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.3,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              category == null
+                                  ? context.tr(
+                                      'Choose a category to open the form',
+                                      'ቅጹን ለመክፈት ምድብ ይምረጡ',
+                                    )
+                                  : context.tr(
+                                      '${_categoryLabel(context, category)} - '
+                                          'now the amount',
+                                      '${_categoryLabel(context, category)} - '
+                                          'አሁን መጠኑን ይጨምሩ',
+                                    ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: context.tr('Close', 'ዝጋ'),
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _amountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                decoration: decoration(
-                  context.tr('Amount *', 'መጠን *'),
-                  icon: Icons.payments_outlined,
-                ).copyWith(prefixText: 'ብር '),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<ExpenseCategory>(
-                initialValue: _category,
-                isExpanded: true,
-                decoration: decoration(
-                  context.tr('Category', 'ምድብ'),
-                  icon: Icons.category_outlined,
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppTheme.spaceM,
+                    ),
+                    itemCount: ExpenseCategory.values.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final item = ExpenseCategory.values[index];
+                      return _CategoryChoiceChip(
+                        category: item,
+                        selected: category == item,
+                        onTap: () => _choose(item),
+                      );
+                    },
+                  ),
                 ),
-                items: [
-                  for (final category in ExpenseCategory.values)
-                    DropdownMenuItem(
-                      value: category,
-                      child: Row(
+                if (category != null)
+                  Flexible(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppTheme.spaceM,
+                        14,
+                        AppTheme.spaceM,
+                        0,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            categoryIcon(category),
-                            size: 16,
-                            color: expenseCategoryColor(category),
+                          TextField(
+                            controller: _amountController,
+                            autofocus: true,
+                            textInputAction: TextInputAction.next,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[0-9.]'),
+                              ),
+                            ],
+                            onChanged: (_) {
+                              if (_error != null) setState(() => _error = null);
+                            },
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                            ),
+                            decoration: decoration(
+                              context.tr('Amount *', 'መጠን *'),
+                              icon: Icons.payments_outlined,
+                            ).copyWith(prefixText: 'ብር '),
                           ),
-                          const SizedBox(width: 8),
-                          Text(_categoryLabel(context, category)),
+                          const SizedBox(height: 10),
+                          TextField(
+                            controller: _titleController,
+                            textInputAction: TextInputAction.done,
+                            onChanged: (_) {
+                              if (_error != null) setState(() => _error = null);
+                            },
+                            decoration: decoration(
+                              context.tr('What was it for?', 'ለምን ነው?'),
+                              icon: Icons.notes_rounded,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          InkWell(
+                            onTap: _saving ? null : _pickDate,
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusMedium,
+                            ),
+                            child: InputDecorator(
+                              decoration: decoration(
+                                context.tr('Date', 'ቀን'),
+                                icon: Icons.calendar_today_outlined,
+                              ),
+                              child: Text(
+                                DateHelper.formatDate(_date),
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (category == ExpenseCategory.restock) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              context.tr(
+                                'Restock is recorded as CapEx and excluded from '
+                                    'operating spend and net profit.',
+                                'እቃ መሙላት እንደ CapEx ተመዝግቦ ከስራ ወጪ እና ከተጣራ ትርፍ '
+                                    'ይመነጫል።',
+                              ),
+                              style: TextStyle(
+                                fontSize: 10,
+                                height: 1.4,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                          if (_error != null) ...[
+                            const SizedBox(height: 10),
+                            Text(
+                              _error!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.alertRed,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                ],
-                onChanged: (category) {
-                  if (category == null) return;
-                  setState(() => _category = category);
-                },
-              ),
-              const SizedBox(height: 10),
-              InkWell(
-                onTap: _saving ? null : _pickDate,
-                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-                child: InputDecorator(
-                  decoration: decoration(
-                    context.tr('Date', 'ቀን'),
-                    icon: Icons.calendar_today_outlined,
+                  )
+                else if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppTheme.spaceM,
+                      10,
+                      AppTheme.spaceM,
+                      0,
+                    ),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.alertRed,
+                      ),
+                    ),
                   ),
-                  child: Text(
-                    DateHelper.formatDate(_date),
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: scheme.onSurface,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppTheme.spaceM,
+                    14,
+                    AppTheme.spaceM,
+                    AppTheme.spaceM,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _save,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: scheme.primary,
+                        foregroundColor: scheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusSmall,
+                          ),
+                        ),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              context.tr('Save expense', 'ወጪ አስቀምጥ'),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _receiptController,
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                decoration: decoration(
-                  context.tr(
-                    'Receipt image path or URL (optional)',
-                    'የደረሰኝ ምስል አድራሻ (አማራጭ)',
-                  ),
-                  icon: Icons.image_outlined,
-                ),
-              ),
-              if (isRestock) ...[
-                const SizedBox(height: 8),
-                Text(
-                  context.tr(
-                    'Restock is recorded as CapEx and excluded from operating '
-                    'spend and net profit.',
-                    'እቃ መሙላት እንደ CapEx ተመዝግቦ ከስራ ወጪ እና ከተጣራ ትርፍ ይመነጫል።',
-                  ),
-                  style: TextStyle(
-                    fontSize: 10,
-                    height: 1.4,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
               ],
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  _error!,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.alertRed,
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(context.tr('Cancel', 'ሰርዝ')),
+    );
+  }
+}
+
+class _CategoryChoiceChip extends StatelessWidget {
+  const _CategoryChoiceChip({
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ExpenseCategory category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final color = expenseCategoryColor(category);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: selected
+            ? color.withValues(alpha: isDark ? 0.24 : 0.12)
+            : isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : AppColors.neutralBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: selected
+              ? color.withValues(alpha: 0.7)
+              : scheme.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.5),
+          width: selected ? 1.4 : 1,
         ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.tr('Save expense', 'ወጪ አስቀምጥ')),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  categoryIcon(category),
+                  size: 17,
+                  color: selected ? color : scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  _categoryLabel(context, category),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: selected
+                        ? color
+                        : isDark
+                        ? AppColors.textOnDark
+                        : scheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1125,7 +1266,7 @@ class _EmptyExpenses extends StatelessWidget {
                     )
                   : context.tr(
                       'Record rent, salaries, transport and other spending '
-                      'to keep profit accurate.',
+                          'to keep profit accurate.',
                       'ትርፍ ትክክል እንዲሆን ኪራይ፣ ደሞዝ፣ መጓጓዣ እና ሌሎች ወጪዎችን ይመዝግቡ።',
                     ),
               textAlign: TextAlign.center,
@@ -1202,7 +1343,5 @@ Color expenseCategoryColor(ExpenseCategory category) {
 }
 
 String _categoryLabel(BuildContext context, ExpenseCategory category) {
-  return context.isAmharic
-      ? category.displayNameAmharic
-      : category.displayName;
+  return context.isAmharic ? category.displayNameAmharic : category.displayName;
 }

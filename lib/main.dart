@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/constants/app_locales.dart';
 import 'core/constants/app_theme.dart';
 import 'data/local/app_database.dart';
 import 'logic/providers/theme_provider.dart';
@@ -9,15 +10,28 @@ import 'ui/screens/splash_screen.dart';
 import 'ui/screens/auth_screen.dart';
 import 'ui/screens/main_layout.dart';
 import 'ui/screens/session_guard.dart';
+import 'ui/screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Preferences are read before the first frame so the app resumes in the
+  // theme and language the user left it in.
+  final preferences = await PersistedPreferences.load();
+  final startDark = switch (preferences.themeMode) {
+    ThemeMode.dark => true,
+    ThemeMode.light => false,
+    ThemeMode.system =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+      Brightness.dark,
+  };
+
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
+    SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: startDark ? Brightness.light : Brightness.dark,
+      statusBarBrightness: startDark ? Brightness.dark : Brightness.light,
     ),
   );
 
@@ -32,8 +46,16 @@ void main() async {
   }
 
   runApp(
-    const ProviderScope(
-      child: EfoyApp(),
+    ProviderScope(
+      overrides: [
+        themeModeProvider.overrideWith(
+          (ref) => ThemeModeNotifier(preferences.themeMode),
+        ),
+        localeProvider.overrideWith(
+          (ref) => LocaleNotifier(preferences.locale),
+        ),
+      ],
+      child: const EfoyApp(),
     ),
   );
 }
@@ -53,10 +75,16 @@ class EfoyApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       locale: locale,
-      supportedLocales: const [
-        Locale('en'),
-        Locale('am'),
-      ],
+      localizationsDelegates: appLocalizationsDelegates,
+      builder: (context, child) {
+        final brightness = switch (themeMode) {
+          ThemeMode.light => Brightness.light,
+          ThemeMode.dark => Brightness.dark,
+          ThemeMode.system => MediaQuery.platformBrightnessOf(context),
+        };
+        return SystemStyleForTheme(brightness: brightness, child: child!);
+      },
+      supportedLocales: appSupportedLocales,
       initialRoute: '/',
       routes: {
         '/': (context) => const SplashScreen(),
@@ -77,6 +105,7 @@ class EfoyApp extends ConsumerWidget {
         '/profile': (context) => const SessionGuard(
               child: MainLayout(initialIndex: 4),
             ),
+        '/settings': (context) => const SessionGuard(child: SettingsScreen()),
       },
     );
   }

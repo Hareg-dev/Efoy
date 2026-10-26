@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:efoy_licensing/efoy_licensing.dart';
 import 'package:isar/isar.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_theme.dart';
-import '../../core/security/device_identity.dart';
-import '../../core/security/license_verifier.dart';
+import '../../core/licensing/installation_identity.dart';
+import '../../core/licensing/license_service.dart';
 import '../../core/security/password_hasher.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/local/app_database.dart';
-import '../../data/models/license_model.dart';
 import '../../data/models/user_profile.dart';
-import '../../data/repositories/user_repository.dart';
+import '../../logic/providers/license_provider.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -21,7 +21,8 @@ class AuthScreen extends ConsumerStatefulWidget {
   ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProviderStateMixin {
+class _AuthScreenState extends ConsumerState<AuthScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _passwordController = TextEditingController();
   final _licenseKeyController = TextEditingController();
@@ -31,9 +32,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
   final _telebirrController = TextEditingController();
   final _bankAccountController = TextEditingController();
   final _bankNameController = TextEditingController();
-  
-  String? _deviceId;
-  DeviceInfo? _deviceInfo;
+
+  String? _installationId;
+  InstallationDeviceInfo? _deviceInfo;
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
@@ -44,46 +45,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadDeviceInfo();
+    _loadInstallationInfo();
   }
 
-  Future<void> _loadDeviceInfo() async {
-    final info = await DeviceIdentity.getDeviceInfo();
-    final id = await DeviceIdentity.getDeviceId();
-    
+  Future<void> _loadInstallationInfo() async {
+    final info = await InstallationIdentity.getDeviceInfo();
+    String? installationId;
+    try {
+      final service = await ref.read(licenseServiceProvider.future);
+      final access = await service.currentAccess();
+      installationId = access.installationId;
+    } catch (_) {
+      // Database unavailable (e.g. web); activation cannot proceed but the
+      // rest of the screen still renders.
+    }
+
+    if (!mounted) return;
     setState(() {
       _deviceInfo = info;
-      _deviceId = id;
+      _installationId = installationId;
     });
-  }
-
-  Future<void> _generateTestKey() async {
-    if (_deviceId == null) return;
-    
-    // Generate 30-day test license
-    final testKey = LicenseVerifier.generateLicenseKey(
-      deviceId: _deviceId!,
-      expiryDate: DateTime.now().add(const Duration(days: 30)),
-    );
-    
-    setState(() {
-      _licenseKeyController.text = testKey;
-    });
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              'Test license key generated (30 days)',
-              'የሙከራ ፈቃድ ቁልፍ ተፈጥሯል (30 ቀናት)',
-            ),
-          ),
-          backgroundColor: AppColors.successGreen,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
   }
 
   @override
@@ -107,74 +88,46 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
       _successMessage = null;
     });
 
-    final licenseKey = _licenseKeyController.text.trim();
+    final activationCode = _licenseKeyController.text.trim();
 
-    if (licenseKey.isEmpty) {
+    if (activationCode.isEmpty) {
       setState(() {
         _errorMessage = context.tr(
-          'Please enter a license key',
-          'እባክዎ የፈቃድ ቁልፍ ያስገቡ',
+          'Please enter an activation code',
+          'እባክዎ የማንቂያ ኮድ ያስገቡ',
         );
         _isLoading = false;
       });
       return;
     }
 
-    if (_deviceId == null) {
+    if (_installationId == null) {
       setState(() {
         _errorMessage = context.tr(
-          'Device ID not available',
-          'የመሣሪያ መለያ አልተገኘም',
+          'Installation ID not available yet. Please wait a moment.',
+          'የተጫን መለያ አልተገኘም። እባክዎ ትንሽ ይጠብቁ።',
         );
         _isLoading = false;
-      });
-      return;
-    }
-
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final result = LicenseVerifier.verifyLicense(
-      licenseKey: licenseKey,
-      deviceId: _deviceId!,
-    );
-
-    if (!result.isValid) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = _licenseError(result.errorMessage);
-        _successMessage = null;
-      });
-      return;
-    }
-
-    final expiryDate = result.expiryDate;
-    final licenseType = result.licenseType;
-    if (expiryDate == null || licenseType == null) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = context.tr(
-          'License verification failed',
-          'የፈቃድ ማረጋገጫ አልተሳካም',
-        );
-        _successMessage = null;
       });
       return;
     }
 
     try {
-      final db = AppDatabase();
-      final isar = await db.init();
-      await UserRepository(isar).activateLicense(
-        LicenseModel(
-          deviceId: result.deviceId ?? _deviceId!,
-          licenseKey: licenseKey,
-          activatedAt: DateTime.now(),
-          expiresAt: expiryDate,
-          licenseType: licenseType,
-        ),
-      );
+      final service = await ref.read(licenseServiceProvider.future);
+      final result = await service.activate(activationCode);
 
       if (!mounted) return;
+
+      if (!result.success) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = _activationError(result);
+          _successMessage = null;
+        });
+        return;
+      }
+
+      ref.invalidate(licenseAccessProvider);
       setState(() {
         _isLoading = false;
         _successMessage = context.tr(
@@ -196,36 +149,95 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
       });
     }
   }
-  
-  String _licenseError(String? message) {
-    if (message == null) {
-      return context.tr('License verification failed', 'የፈቃድ ማረጋገጫ አልተሳካም');
+
+  /// Continue into the app on the free evaluation window. No license is
+  /// activated; the trial is enforced by the licensing service.
+  Future<void> _startTrial() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final service = await ref.read(licenseServiceProvider.future);
+      final access = await service.currentAccess();
+      if (!mounted) return;
+      if (access.canPerformPaidOperations) {
+        setState(() {
+          _isLoading = false;
+          _showOnboarding = true;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = context.tr(
+            'The trial period on this device has already ended. Please activate a license.',
+            'በዚህ መሣሪያ የሙከራ ጊዜው አልፎበታል። እባክዎ ፈቃድ ያንቁ።',
+          );
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = context.tr(
+          'Could not start the trial. Please try again.',
+          'ሙከራውን መጀመር አልተቻለም። እባክዎ እንደገና ይሞክሩ።',
+        );
+      });
     }
-    if (message.contains('Invalid license key format')) {
+  }
+
+  String _activationError(ActivationResult result) {
+    if (result.storageFailure) {
       return context.tr(
-        'Invalid license key format',
-        'የፈቃድ ቁልፍ ቅርጸት ትክክል አይደለም',
+        'Secure storage is unavailable on this device. License state cannot be saved.',
+        'የደህንነት ማከማቻ በዚህ መሣሪያ አይገኝም። የፈቃድ ሁኔታ ማስቀመጥ አይቻልም።',
       );
     }
-    if (message.contains('not valid for this device')) {
-      return context.tr(
-        'This license key is not valid for this device',
-        'ይህ የፈቃድ ቁልፍ ለዚህ መሣሪያ ትክክል አይደለም',
-      );
+    switch (result.rejection) {
+      case LicenseRejectionReason.malformedCode:
+        return context.tr(
+          'This activation code is malformed. Check for missing characters.',
+          'የማንቂያ ኮዱ አይገባም። የጎደሉ ፊደላት መኖራቸውን ይመልከቱ።',
+        );
+      case LicenseRejectionReason.unsupportedVersion:
+        return context.tr(
+          'This code was issued for a newer app version. Please update the app.',
+          'ይህ ኮድ ለአዲስ የመተግበሪያ ቅጭ ተሰጥቷል። እባክዎ መተግበሪያውን ያዘምኑ።',
+        );
+      case LicenseRejectionReason.unsupportedPlan:
+        return context.tr(
+          'This license plan is not supported by this app.',
+          'ይህ የፈቃድ ዓይነት በዚህ መተግበሪያ አይደገፍም።',
+        );
+      case LicenseRejectionReason.invalidPayload:
+        return context.tr(
+          'This activation code contains invalid license data.',
+          'የማንቂያ ኮዱ የተሳሳተ የፈቃድ መረጃ ይዟል።',
+        );
+      case LicenseRejectionReason.invalidSignature:
+        return context.tr(
+          'Activation code signature verification failed.',
+          'የማንቂያ ኮድ ፊርማ ማረጋገጫ አልተሳካም።',
+        );
+      case LicenseRejectionReason.installationMismatch:
+        return context.tr(
+          'This code is not valid for this device. Share your Installation ID to get your own code.',
+          'ይህ ኮድ ለዚህ መሣሪያ ትክክል አይደለም። የመለያዎን ያጋሩ የራስዎን ኮድ ለማግኘት።',
+        );
+      case LicenseRejectionReason.expired:
+        return context.tr(
+          'This license has expired. Please renew it.',
+          'ይህ ፈቃድ ጊዜው አልፎበታል። እባክዎ ያድሱት።',
+        );
+      case LicenseRejectionReason.notYetValid:
+        return context.tr(
+          'This license is not valid yet. Check your device date and time.',
+          'ይህ ፈቃድ ገና አልተጀመረም። የመሣሪያዎን ቀንና ሰዓት ይመልከቱ።',
+        );
+      case null:
+        return context.tr('License verification failed', 'የፈቃድ ማረጋገጫ አልተሳካም');
     }
-    if (message.contains('signature verification failed')) {
-      return context.tr(
-        'License key signature verification failed',
-        'የፈቃድ ቁልፍ ፊርማ ማረጋገጫ አልተሳካም',
-      );
-    }
-    if (message.contains('expired')) {
-      return context.tr(
-        'This license has expired. Please renew it.',
-        'ይህ ፈቃድ ጊዜው አልፎበታል። እባክዎ ያድሱት።',
-      );
-    }
-    return message;
   }
 
   String _hashPassword(String password) {
@@ -237,10 +249,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
 
     if (password.isEmpty) {
       setState(() {
-        _errorMessage = context.tr(
-          'Password is required',
-          'የይለፍ ቃል ያስፈልጋል',
-        );
+        _errorMessage = context.tr('Password is required', 'የይለፍ ቃል ያስፈልጋል');
       });
       return;
     }
@@ -271,10 +280,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
       final enteredHash = _hashPassword(password);
       if (resolvedProfile.passwordHash != enteredHash) {
         setState(() {
-          _errorMessage = context.tr(
-            'Incorrect password',
-            'የተሳሳተ የይለፍ ቃል',
-          );
+          _errorMessage = context.tr('Incorrect password', 'የተሳሳተ የይለፍ ቃል');
           _isLoading = false;
         });
         return;
@@ -312,10 +318,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
 
     if (newPassword.isEmpty) {
       setState(() {
-        _errorMessage = context.tr(
-          'Password is required',
-          'የይለፍ ቃል ያስፈልጋል',
-        );
+        _errorMessage = context.tr('Password is required', 'የይለፍ ቃል ያስፈልጋል');
       });
       return;
     }
@@ -332,10 +335,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
 
     if (newPassword != confirmPassword) {
       setState(() {
-        _errorMessage = context.tr(
-          'Passwords do not match',
-          'የይለፍ ቃሎቹ አይጣጣሙም',
-        );
+        _errorMessage = context.tr('Passwords do not match', 'የይለፍ ቃሎቹ አይጣጣሙም');
       });
       return;
     }
@@ -369,10 +369,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
         businessName: 'Efoy Business',
         businessNameAm: 'የእፎይ ሱቅ',
         ownerName: 'Store Owner',
-        phoneNumber: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
-        telebirrAccount: _telebirrController.text.trim().isEmpty ? null : _telebirrController.text.trim(),
-        bankAccount: _bankAccountController.text.trim().isEmpty ? null : _bankAccountController.text.trim(),
-        bankName: _bankNameController.text.trim().isEmpty ? null : _bankNameController.text.trim(),
+        phoneNumber: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+        telebirrAccount: _telebirrController.text.trim().isEmpty
+            ? null
+            : _telebirrController.text.trim(),
+        bankAccount: _bankAccountController.text.trim().isEmpty
+            ? null
+            : _bankAccountController.text.trim(),
+        bankName: _bankNameController.text.trim().isEmpty
+            ? null
+            : _bankNameController.text.trim(),
         isDemoMode: _isDemoMode,
         isDarkMode: false,
         language: 'en',
@@ -409,21 +417,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
     }
   }
 
-  void _copyDeviceId() {
-    if (_deviceId != null) {
-      Clipboard.setData(ClipboardData(text: _deviceId!));
+  void _copyInstallationId() {
+    if (_installationId != null) {
+      Clipboard.setData(ClipboardData(text: _installationId!));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             context.tr(
-              'Device ID copied to clipboard',
-              'የመሣሪያ መለያ ወደ ቅንጥብ ተቀድቷል',
+              'Installation ID copied to clipboard',
+              'የተጫን መለያ ወደ ቅንጥብ ተቀድቷል',
             ),
           ),
           duration: const Duration(seconds: 2),
         ),
       );
     }
+  }
+
+  void _copySupportNumber() {
+    Clipboard.setData(const ClipboardData(text: AppStrings.supportPhone));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          context.tr(
+            'Support number copied to clipboard',
+            'የድጋፍ ቁጥር ወደ ቅንጥብ ተቀድቷል',
+          ),
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override
@@ -436,7 +459,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
         child: Column(
           children: [
             const SizedBox(height: 40),
-            
+
             // Logo
             Container(
               width: 100,
@@ -453,14 +476,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                 ],
               ),
               padding: const EdgeInsets.all(12),
-              child: Image.asset(
-                'asset/efoy.jpg',
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset('asset/efoy.jpg', fit: BoxFit.contain),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Brand Name
             const Text(
               'Efoy',
@@ -470,17 +490,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                 color: AppColors.primaryTeal,
               ),
             ),
-            
+
             Text(
               'እፎይ',
-              style: TextStyle(
-                fontSize: 20,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 20, color: scheme.onSurfaceVariant),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Tab Bar
             Container(
               margin: const EdgeInsets.symmetric(horizontal: AppTheme.spaceL),
@@ -500,23 +517,18 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                 dividerColor: Colors.transparent,
                 tabs: [
                   Tab(text: context.tr('Login', 'ግባ')),
-                  Tab(
-                    text: context.tr('Activate License', 'ፈቃድ አስጀምር'),
-                  ),
+                  Tab(text: context.tr('Activate License', 'ፈቃድ አስጀምር')),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // Tab Views
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: [
-                  _buildLoginTab(),
-                  _buildLicenseTab(),
-                ],
+                children: [_buildLoginTab(), _buildLicenseTab()],
               ),
             ),
           ],
@@ -535,41 +547,33 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
         children: [
           Text(
             context.tr('Welcome Back', 'እንኳን ደህና መጡ'),
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           Text(
             context.tr(
               'Enter your password to continue',
               'ለመቀጠል የይለፍ ቃልዎን ያስገቡ',
             ),
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(color: scheme.onSurfaceVariant),
           ),
-          
+
           const SizedBox(height: 32),
-          
+
           TextField(
             controller: _passwordController,
             obscureText: true,
             decoration: InputDecoration(
               labelText: context.tr('Password', 'የይለፍ ቃል'),
-              hintText: context.tr(
-                'Enter your password',
-                'የይለፍ ቃልዎን ያስገቡ',
-              ),
+              hintText: context.tr('Enter your password', 'የይለፍ ቃልዎን ያስገቡ'),
               prefixIcon: const Icon(Icons.lock_outline),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           ElevatedButton(
             onPressed: _isLoading ? null : _handleLogin,
             child: _isLoading
@@ -586,9 +590,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                     child: Text(context.tr('Login', 'ግባ')),
                   ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           TextButton(
             onPressed: () {
               _tabController.animateTo(1);
@@ -610,7 +614,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
     if (_showOnboarding) {
       return _buildOnboardingFlow();
     }
-    
+
     final scheme = Theme.of(context).colorScheme;
 
     return SingleChildScrollView(
@@ -620,26 +624,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
         children: [
           Text(
             context.tr('Activate Efoy', 'እፎይን አስጀምር'),
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           Text(
             context.tr(
               'Enter your license key to activate',
               'ለማስጀመር የፈቃድ ቁልፍዎን ያስገቡ',
             ),
-            style: TextStyle(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(color: scheme.onSurfaceVariant),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Device Info Card
           if (_deviceInfo != null) ...[
             Container(
@@ -671,37 +670,34 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   _buildInfoRow(
                     context.tr('Platform', 'መድረክ'),
                     _deviceInfo!.platform,
                   ),
-                  _buildInfoRow(
-                    context.tr('Model', 'ሞዴል'),
-                    _deviceInfo!.model,
-                  ),
+                  _buildInfoRow(context.tr('Model', 'ሞዴል'), _deviceInfo!.model),
                   _buildInfoRow(
                     context.tr('Manufacturer', 'አምራች'),
                     _deviceInfo!.manufacturer,
                   ),
-                  
+
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 12),
-                  
+
                   Text(
-                    context.tr('Device ID', 'የመሣሪያ መለያ'),
+                    context.tr('Installation ID', 'የተጫን መለያ'),
                     style: TextStyle(
                       fontSize: 12,
                       color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   Row(
                     children: [
                       Expanded(
@@ -713,12 +709,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                           decoration: BoxDecoration(
                             color: scheme.surface,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: scheme.outlineVariant,
-                            ),
+                            border: Border.all(color: scheme.outlineVariant),
                           ),
                           child: Text(
-                            _deviceId ?? context.tr('Loading...', 'በመጫን ላይ...'),
+                            _installationId ??
+                                context.tr('Loading...', 'በመጫን ላይ...'),
                             style: const TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 13,
@@ -728,13 +723,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(width: 8),
-                      
+
                       IconButton(
-                        onPressed: _copyDeviceId,
+                        onPressed: _copyInstallationId,
                         icon: const Icon(Icons.copy),
-                        tooltip: context.tr('Copy Device ID', 'የመሣሪያ መለያ ቅዳ'),
+                        tooltip: context.tr(
+                          'Copy Installation ID',
+                          'የተጫን መለያ ቅዳ',
+                        ),
                         style: IconButton.styleFrom(
                           backgroundColor: AppColors.primaryTeal,
                           foregroundColor: Colors.white,
@@ -742,13 +740,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                       ),
                     ],
                   ),
-                  
+
                   const SizedBox(height: 8),
-                  
+
                   Text(
                     context.tr(
-                      'Share this Device ID to get your license key',
-                      'የፈቃድ ቁልፍዎን ለማግኘት ይህን የመሣሪያ መለያ ያጋሩ',
+                      'Share this Installation ID to receive your activation code',
+                      'የማንቂያ ኮድዎን ለማግኘት ይህን የተጫን መለያ ያጋሩ',
                     ),
                     style: TextStyle(
                       fontSize: 11,
@@ -759,59 +757,115 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
           ],
-          
-          // License Key Input
+
+          // Activation Code Input
           TextField(
             controller: _licenseKeyController,
             decoration: InputDecoration(
-              labelText: context.tr('License Key', 'የፈቃድ ቁልፍ'),
-              hintText: 'XXXX-XXXX-XXXX-XXXX',
+              labelText: context.tr('Activation Code', 'የማንቂያ ኮድ'),
+              hintText: context.tr(
+                'Paste the code you received',
+                'የተሰጠዎትን ኮድ ይለጥፉ',
+              ),
               prefixIcon: const Icon(Icons.vpn_key),
             ),
-            textCapitalization: TextCapitalization.characters,
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9-]')),
+              FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9_\-=\s]')),
             ],
             maxLines: 3,
             minLines: 1,
           ),
-          
-          // Test Key Generator Button (only in debug mode)
-          if (kDebugMode) ...[
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _generateTestKey,
-              icon: const Icon(Icons.build, size: 18),
-              label: Text(
-                context.tr(
-                  'Generate Test Key (30 Days)',
-                  'የሙከራ ቁልፍ ፍጠር (30 ቀናት)',
+
+          const SizedBox(height: 12),
+
+          // One number, one path: the merchant calls or SMSes the Installation
+          // ID, pays it on Telebirr, and the key comes back on the same line.
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.payments_outlined,
+                      size: 16,
+                      color: AppColors.primaryTeal,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        context.tr('How to get a code', 'ኮድ እንዴት እናገኛለን'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _copySupportNumber,
+                      tooltip: context.tr('Copy the number', 'ቁጥሩን ቅዳ'),
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.copy, size: 16),
+                    ),
+                  ],
                 ),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.warningAmber,
-                side: const BorderSide(color: AppColors.warningAmber),
-              ),
+                Text(
+                  context.tr(
+                    '1. Call or SMS your Installation ID to '
+                        '${AppStrings.supportPhone} ${AppStrings.supportTeam}\n'
+                        '2. Pay with Telebirr to that same number\n'
+                        '3. The activation key comes back to you on it',
+                    '1. የተጫን መለያዎን በስልክ ወይም SMS ለ${AppStrings.supportPhone} '
+                        '${AppStrings.supportTeam} ይላኩ\n'
+                        '2. በዚሁ ቁጥር በቴሌብር ይክፈሉ\n'
+                        '3. የማንቂያ ኮዱ በዚሁ ቁጥር ይመለስልዎታል',
+                  ),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.6,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 15,
+                      color: AppColors.primaryTeal,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      context.tr('Telebirr & support', 'ቴሌብርና ድጋፍ'),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${AppStrings.supportPhone} · ${AppStrings.supportTeam}',
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              context.tr(
-                '⚠️ Debug mode only - for testing',
-                '⚠️ ለሙከራ ብቻ - ዲበግ ሁነታ',
-              ),
-              style: TextStyle(
-                fontSize: 11,
-                color: scheme.onSurfaceVariant,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-          
+          ),
+
           const SizedBox(height: 16),
-          
+
           // Error Message
           if (_errorMessage != null) ...[
             Container(
@@ -845,7 +899,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
             ),
             const SizedBox(height: 16),
           ],
-          
+
           // Success Message
           if (_successMessage != null) ...[
             Container(
@@ -879,7 +933,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
             ),
             const SizedBox(height: 16),
           ],
-          
+
           // Activate Button
           ElevatedButton(
             onPressed: _isLoading ? null : _handleLicenseActivation,
@@ -894,10 +948,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                   )
                 : Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text(
-                      context.tr('Activate License', 'ፈቃድ አስጀምር'),
-                    ),
+                    child: Text(context.tr('Activate License', 'ፈቃድ አስጀምር')),
                   ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Trial entry: use the app free for three days, no code needed.
+          TextButton.icon(
+            onPressed: _isLoading ? null : _startTrial,
+            icon: const Icon(Icons.hourglass_top_outlined, size: 16),
+            label: Text(context.tr('Try free for 3 days', 'ለ3 ቀናት በነጻ ይሞክሩ')),
           ),
         ],
       ),
@@ -913,26 +974,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
         children: [
           Text(
             label,
-            style: TextStyle(
-              fontSize: 13,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
           ),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.end,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
       ),
     );
   }
-  
+
   Widget _buildOnboardingFlow() {
     final scheme = Theme.of(context).colorScheme;
 
@@ -947,11 +1002,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
             decoration: BoxDecoration(
               color: AppColors.successGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.successGreen.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.successGreen.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle, color: AppColors.successGreen, size: 32),
+                const Icon(
+                  Icons.check_circle,
+                  color: AppColors.successGreen,
+                  size: 32,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -982,16 +1043,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Step 1: Set Password
           Text(
             context.tr('Step 1: Create Password', 'ደረጃ 1: የይለፍ ቃል ይፍጠሩ'),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
@@ -999,13 +1057,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               'This password will be used to login to your account',
               'ይህ የይለፍ ቃል ለመግቢያነት ይጠቅማል',
             ),
-            style: TextStyle(
-              fontSize: 13,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-          
+
           TextField(
             controller: _newPasswordController,
             obscureText: true,
@@ -1018,50 +1073,50 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               prefixIcon: const Icon(Icons.lock_outline),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           TextField(
             controller: _confirmPasswordController,
             obscureText: true,
             decoration: InputDecoration(
               labelText: context.tr('Confirm Password', 'የይለፍ ቃል አረጋግጥ'),
-              hintText: context.tr(
-                'Re-enter password',
-                'የይለፍ ቃል እንደገና ያስገቡ',
-              ),
+              hintText: context.tr('Re-enter password', 'የይለፍ ቃል እንደገና ያስገቡ'),
               prefixIcon: const Icon(Icons.lock_outline),
             ),
           ),
-          
+
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 24),
-          
+
           // Step 2: Demo Mode Toggle
           Text(
             context.tr('Step 2: Choose Mode', 'ደረጃ 2: ሁነታ ይምረጡ'),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          
+
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _isDemoMode ? AppColors.warningAmber.withValues(alpha: 0.1) : AppColors.primaryTeal.withValues(alpha: 0.1),
+              color: _isDemoMode
+                  ? AppColors.warningAmber.withValues(alpha: 0.1)
+                  : AppColors.primaryTeal.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: _isDemoMode ? AppColors.warningAmber.withValues(alpha: 0.3) : AppColors.primaryTeal.withValues(alpha: 0.3),
+                color: _isDemoMode
+                    ? AppColors.warningAmber.withValues(alpha: 0.3)
+                    : AppColors.primaryTeal.withValues(alpha: 0.3),
               ),
             ),
             child: Row(
               children: [
                 Icon(
                   _isDemoMode ? Icons.visibility : Icons.store,
-                  color: _isDemoMode ? AppColors.warningAmber : AppColors.primaryTeal,
+                  color: _isDemoMode
+                      ? AppColors.warningAmber
+                      : AppColors.primaryTeal,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1108,20 +1163,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 24),
-          
+
           // Step 3: Payment Information (optional in demo mode)
           Row(
             children: [
               Expanded(
                 child: Text(
-                  context.tr(
-                    'Step 3: Payment Information',
-                    'ደረጃ 3: የክፍያ መረጃ',
-                  ),
+                  context.tr('Step 3: Payment Information', 'ደረጃ 3: የክፍያ መረጃ'),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -1131,7 +1183,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               if (_isDemoMode) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: scheme.onSurfaceVariant.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
@@ -1152,32 +1207,29 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
           Text(
             _isDemoMode
                 ? context.tr(
-                    'You can add this information later in Settings',
-                    'ይህን መረጃ በኋላ በቅንብሮች ውስጥ ማከል ይችላሉ',
+                    'You can add this information later from Profile',
+                    'ይህን መረጃ በኋላ ከመገለጫ ማከል ይችላሉ',
                   )
                 : context.tr(
                     'Required for accepting customer payments',
                     'የደንበኛ ክፍያ ለመቀበል ያስፈልጋል',
                   ),
-            style: TextStyle(
-              fontSize: 13,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
-          
+
           TextField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             decoration: InputDecoration(
               labelText: context.tr('Phone Number', 'የስልክ ቁጥር'),
-              hintText: '+251912345678',
+              hintText: context.tr('09XXXXXXXX', '09XXXXXXXX'),
               prefixIcon: const Icon(Icons.phone),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           TextField(
             controller: _telebirrController,
             keyboardType: TextInputType.phone,
@@ -1187,23 +1239,20 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               prefixIcon: const Icon(Icons.payment),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           TextField(
             controller: _bankAccountController,
             decoration: InputDecoration(
-              labelText: context.tr(
-                'Bank Account Number',
-                'የባንክ አካውንት ቁጥር',
-              ),
+              labelText: context.tr('Bank Account Number', 'የባንክ አካውንት ቁጥር'),
               hintText: context.tr('Account number', 'የአካውንት ቁጥር'),
               prefixIcon: const Icon(Icons.account_balance),
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           TextField(
             controller: _bankNameController,
             decoration: InputDecoration(
@@ -1215,9 +1264,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
               prefixIcon: const Icon(Icons.business),
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Error Message
           if (_errorMessage != null) ...[
             Container(
@@ -1251,7 +1300,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
             ),
             const SizedBox(height: 16),
           ],
-          
+
           // Complete Setup Button
           ElevatedButton(
             onPressed: _isLoading ? null : _completeOnboarding,
@@ -1271,9 +1320,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> with SingleTickerProvid
                     ),
                   ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           TextButton(
             onPressed: () {
               setState(() {

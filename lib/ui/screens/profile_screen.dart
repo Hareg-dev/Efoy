@@ -1,87 +1,57 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_theme.dart';
-import '../../core/security/device_identity.dart';
-import '../../core/security/license_verifier.dart';
+import '../../core/licensing/license_access_state.dart';
 import '../../core/security/password_hasher.dart';
 import '../../core/utils/date_helper.dart';
 import '../../core/utils/l10n.dart';
-import '../../data/local/app_database.dart';
-import '../../data/models/license_model.dart';
 import '../../data/models/user_profile.dart';
+import '../../logic/providers/license_provider.dart';
 import '../../logic/providers/repository_providers.dart';
-import '../../logic/providers/theme_provider.dart';
+import '../widgets/settings_widgets.dart';
+import '../widgets/screen_header.dart';
 
-const _backupKeys = {
-  'products',
-  'sales',
-  'expenses',
-  'restockLogs',
-  'licenses',
-  'userProfiles',
-  'heldOrders',
-};
-
-class ProfileScreen extends ConsumerStatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
-  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+  Widget build(BuildContext context) {
+    // A merchant's own record - legal names, licence terms, the support line -
+    // reads better in one script, so this screen stays English whatever the
+    // rest of the app speaks.
+    return Localizations.override(
+      context: context,
+      locale: const Locale('en'),
+      child: const _ProfileScreenBody(),
+    );
+  }
 }
 
-class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  static const _prefs = FlutterSecureStorage();
-  static const _lastBackupKey = 'efoy_last_backup_at';
-
-  String? _deviceId;
-  DateTime? _lastBackupAt;
-  bool _exporting = false;
+class _ProfileScreenBody extends ConsumerStatefulWidget {
+  const _ProfileScreenBody();
 
   @override
-  void initState() {
-    super.initState();
-    _loadLocalState();
-  }
+  ConsumerState<_ProfileScreenBody> createState() => _ProfileScreenState();
+}
 
-  Future<void> _loadLocalState() async {
-    String? deviceId;
-    try {
-      deviceId = await DeviceIdentity.getDeviceId();
-    } catch (_) {
-      // Device identity is unavailable on unsupported platforms.
-    }
-    DateTime? lastBackup;
-    try {
-      final raw = await _prefs.read(key: _lastBackupKey);
-      lastBackup = raw == null ? null : DateTime.tryParse(raw);
-    } catch (_) {
-      // Ignore preference read failures.
-    }
-    if (!mounted) return;
-    setState(() {
-      _deviceId = deviceId;
-      _lastBackupAt = lastBackup;
-    });
-  }
+class _ProfileScreenState extends ConsumerState<_ProfileScreenBody> {
+  bool _savingPhoto = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
     final profileAsync = ref.watch(userProfileProvider);
-    final licenseAsync = ref.watch(latestLicenseProvider);
+    final accessAsync = ref.watch(licenseAccessProvider);
     final profile = profileAsync.valueOrNull;
-    final license = licenseAsync.valueOrNull;
-    final themeMode = ref.watch(themeModeProvider);
-    final locale = ref.watch(localeProvider);
+    final licenseAccess = accessAsync.valueOrNull;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -96,56 +66,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                context.tr('PROFILE', 'መገለጫ'),
-                style: TextStyle(
-                  fontSize: 28,
-                  height: 1.1,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                context.tr(
+              ScreenHeader(
+                title: context.tr('PROFILE', 'መገለጫ'),
+                subtitle: context.tr(
                   'Store, security and data settings',
                   'የሱቅ፣ የደህንነት እና የውሂብ ቅንብሮች',
-                ),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onSurfaceVariant,
                 ),
               ),
               const SizedBox(height: AppTheme.spaceM),
               _ProfileCard(
                 profile: profile,
-                onEdit:
-                    profile == null ? null : () => _openProfileForm(profile),
+                onEdit: profile == null
+                    ? null
+                    : () => _openProfileForm(profile),
+                onPhoto: _savingPhoto || profile == null
+                    ? null
+                    : () => _choosePhoto(profile),
               ),
               const SizedBox(height: AppTheme.spaceM),
               _PaymentCard(
                 profile: profile,
-                onEdit:
-                    profile == null ? null : () => _openPaymentForm(profile),
+                onEdit: profile == null
+                    ? null
+                    : () => _openPaymentForm(profile),
               ),
               const SizedBox(height: AppTheme.spaceM),
-              _PreferencesCard(
-                themeMode: themeMode,
-                locale: locale,
-                onThemeChanged: (mode) =>
-                    ref.read(themeModeProvider.notifier).setThemeMode(mode),
-                onLanguageChanged: (code) =>
-                    ref.read(localeProvider.notifier).setLanguage(code),
-              ),
-              const SizedBox(height: AppTheme.spaceM),
-              _SectionCard(
+              SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _SectionTitle(context.tr('Security', 'ደህንነት')),
+                    SettingsSectionTitle(context.tr('Security', 'ደህንነት')),
                     const SizedBox(height: 10),
-                    _ActionTile(
+                    SettingsActionTile(
                       icon: Icons.lock_outline,
                       title: context.tr('Change password', 'የይለፍ ቃል ቀይር'),
                       subtitle: context.tr(
@@ -156,60 +108,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ? null
                           : () => _openChangePassword(profile),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: AppTheme.spaceM),
-              _SectionCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _SectionTitle(
-                      context.tr('Data management', 'የውሂብ አስተዳደር'),
-                    ),
-                    const SizedBox(height: 10),
-                    _ActionTile(
-                      icon: Icons.cloud_download_outlined,
-                      title: context.tr('Back up data', 'ውሂብ ያስቀምጡ'),
-                      subtitle: _lastBackupAt == null
-                          ? context.tr('Never backed up', 'አልተቀመጠም')
-                          : context.tr(
-                              'Last backup '
-                              '${DateHelper.formatDateTime(_lastBackupAt!)}',
-                              'የመጨረሻ ማስቀመጫ '
-                              '${DateHelper.formatDateTime(_lastBackupAt!)}',
-                            ),
-                      trailing: _exporting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.file_download_outlined, size: 20),
-                      onTap: _exporting ? null : _exportData,
-                    ),
                     const SizedBox(height: 8),
-                    _ActionTile(
-                      icon: Icons.restore_outlined,
-                      title: context.tr('Restore data', 'ውሂብ መልስ'),
+                    SettingsActionTile(
+                      icon: Icons.settings_outlined,
+                      title: context.tr('Settings', 'ቅንብሮች'),
                       subtitle: context.tr(
-                        'Restore from an exported JSON backup',
-                        'ከተላከ JSON ምትኬ ወደነበረበት ይመልሱ',
+                        'Colours, language, reports and stored data',
+                        'ቀለሞች፣ ቋንቋ፣ ወረዳዎችና የተቀመጠ ውሂብ',
                       ),
-                      trailing: const Icon(Icons.upload_file_outlined, size: 20),
-                      onTap: _restoreData,
+                      onTap: () => Navigator.of(context).pushNamed('/settings'),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: AppTheme.spaceM),
               _LicenseCard(
-                license: license,
-                isLoading: licenseAsync.isLoading,
-                deviceId: _deviceId,
-                onCopyDeviceId: _copyDeviceId,
+                access: licenseAccess,
+                isLoading: accessAsync.isLoading,
+                installationId: licenseAccess?.installationId,
+                onCopyInstallationId: _copyInstallationId,
                 onReactivate: _openReactivation,
               ),
+              if (licenseAccess != null &&
+                  !licenseAccess.canPerformPaidOperations) ...[
+                const SizedBox(height: AppTheme.spaceM),
+                const _SupportCard(),
+              ],
               const SizedBox(height: AppTheme.spaceL),
               SizedBox(
                 width: double.infinity,
@@ -240,13 +164,122 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // -------------------------------------------------------------------------
+  // Profile photo
+  // -------------------------------------------------------------------------
+
+  /// Tap the avatar: choose a new picture, or clear the one already set.
+  Future<void> _choosePhoto(UserProfile profile) async {
+    final hasPhoto = profile.profilePhotoPath != null;
+    final action = hasPhoto
+        ? await showModalBottomSheet<_PhotoAction>(
+            context: context,
+            builder: (sheetContext) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.photo_library_outlined),
+                    title: const Text('Choose another photo'),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(_PhotoAction.replace),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.delete_outline),
+                    title: const Text('Remove photo'),
+                    onTap: () =>
+                        Navigator.of(sheetContext).pop(_PhotoAction.remove),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : _PhotoAction.replace;
+    if (action == null) return;
+    if (action == _PhotoAction.remove) {
+      await _storePhoto(profile, null);
+      return;
+    }
+    await _pickPhoto(profile);
+  }
+
+  Future<void> _pickPhoto(UserProfile profile) async {
+    XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 720,
+        imageQuality: 88,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showSnack('Camera roll is not available: $error', isError: true);
+      return;
+    }
+    if (picked == null) return;
+
+    setState(() => _savingPhoto = true);
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final target = File(
+        '${directory.path}${Platform.pathSeparator}profile_photo'
+        '${_suffixOf(picked.path)}',
+      );
+      await target.writeAsBytes(await picked.readAsBytes());
+      await _storePhoto(profile, target.path);
+    } catch (error) {
+      if (!mounted) return;
+      _showSnack('Could not save the photo: $error', isError: true);
+    } finally {
+      if (mounted) setState(() => _savingPhoto = false);
+    }
+  }
+
+  Future<void> _storePhoto(UserProfile profile, String? path) async {
+    final previous = profile.profilePhotoPath;
+    try {
+      final repository = await ref.read(userRepositoryProvider.future);
+      profile.profilePhotoPath = path;
+      await repository.saveProfile(profile);
+      // Only drop the superseded copy once the new path is safely stored.
+      if (previous != null && previous != path) {
+        final stale = File(previous);
+        if (await stale.exists()) await stale.delete();
+      }
+      if (!mounted) return;
+      ref.invalidate(userProfileProvider);
+      _showSnack(path == null ? 'Photo removed' : 'Photo updated');
+    } catch (error) {
+      if (!mounted) return;
+      _showSnack('Could not save the photo: $error', isError: true);
+    }
+  }
+
+  static String _suffixOf(String path) {
+    final dot = path.lastIndexOf('.');
+    if (dot == -1) return '.jpg';
+    final suffix = path.substring(dot).toLowerCase();
+    return suffix.length > 5 ? '.jpg' : suffix;
+  }
+
+  // -------------------------------------------------------------------------
   // Profile / payment editing
   // -------------------------------------------------------------------------
+
+  /// Routes live on the app Navigator, above this screen's English scope, so
+  /// every dialog re-applies the override or it would answer in Amharic.
+  Widget _english(BuildContext dialogContext, Widget child) {
+    return Localizations.override(
+      context: dialogContext,
+      locale: const Locale('en'),
+      child: child,
+    );
+  }
 
   Future<void> _openProfileForm(UserProfile profile) async {
     final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => _ProfileFormDialog(profile: profile),
+      builder: (dialogContext) =>
+          _english(dialogContext, _ProfileFormDialog(profile: profile)),
     );
     if (!mounted || saved != true) return;
     _showSnack(context.tr('Profile updated', 'መገለጫ ተስተካክሏል'));
@@ -255,7 +288,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _openPaymentForm(UserProfile profile) async {
     final saved = await showDialog<bool>(
       context: context,
-      builder: (_) => _PaymentFormDialog(profile: profile),
+      builder: (dialogContext) =>
+          _english(dialogContext, _PaymentFormDialog(profile: profile)),
     );
     if (!mounted || saved != true) return;
     _showSnack(context.tr('Payment details updated', 'የክፍያ ዝርዝር ተስተካክሏል'));
@@ -264,179 +298,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _openChangePassword(UserProfile profile) async {
     final changed = await showDialog<bool>(
       context: context,
-      builder: (_) => _ChangePasswordDialog(profile: profile),
+      builder: (dialogContext) =>
+          _english(dialogContext, _ChangePasswordDialog(profile: profile)),
     );
     if (!mounted || changed != true) return;
     _showSnack(context.tr('Password changed', 'የይለፍ ቃል ተቀይሯል'));
   }
 
   // -------------------------------------------------------------------------
-  // Backup / restore
-  // -------------------------------------------------------------------------
-
-  Future<void> _exportData() async {
-    setState(() => _exporting = true);
-    try {
-      final database = AppDatabase();
-      await database.init();
-      final data = await database.exportToJson();
-      final json = const JsonEncoder.withIndent('  ').convert(data);
-
-      final directory = await getApplicationDocumentsDirectory();
-      final now = DateTime.now();
-      final stamp = '${now.year}${_two(now.month)}${_two(now.day)}_'
-          '${_two(now.hour)}${_two(now.minute)}${_two(now.second)}';
-      final file = File(
-        '${directory.path}${Platform.pathSeparator}efoy_backup_$stamp.json',
-      );
-      await file.writeAsString(json);
-
-      await _prefs.write(key: _lastBackupKey, value: now.toIso8601String());
-      if (!mounted) return;
-      setState(() {
-        _exporting = false;
-        _lastBackupAt = now;
-      });
-
-      final copy = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text(context.tr('Backup created', 'ምትኬ ተፈጥሯል')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr(
-                  'Saved to your app documents folder:',
-                  'ወደ መተግበሪያው ሰነዶች አቃፊ ተቀምጧል፦',
-                ),
-                style: const TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              SelectableText(
-                file.path,
-                style: const TextStyle(fontSize: 11),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                context.tr(
-                  'Copy the JSON to move the backup somewhere safe.',
-                  'ምትኬውን ደህንነቱ በተጠበቀ ቦታ ለማስቀመጥ JSON ኮፒ ያድርጉ።',
-                ),
-                style: const TextStyle(fontSize: 11),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(context.tr('Done', 'ጨርስ')),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.copy, size: 16),
-              label: Text(context.tr('Copy JSON', 'JSON ኮፒ')),
-            ),
-          ],
-        ),
-      );
-
-      if (copy == true && mounted) {
-        await Clipboard.setData(ClipboardData(text: json));
-        if (!mounted) return;
-        _showSnack(
-          context.tr('Backup copied to clipboard', 'ምትኬ ተኮርጅቷል'),
-        );
-      }
-    } catch (error) {
-      if (!mounted) return;
-      setState(() => _exporting = false);
-      _showSnack(error.toString(), isError: true);
-    }
-  }
-
-  Future<void> _restoreData() async {
-    final raw = await showDialog<String>(
-      context: context,
-      builder: (_) => const _RestoreDialog(),
-    );
-    if (!mounted || raw == null) return;
-
-    final data = _tryParseBackup(raw);
-    if (data == null) {
-      _showSnack(
-        context.tr(
-          'That does not look like a valid Efoy backup.',
-          'ይህ ትክክለኛ የኢፎይ ምትኬ አይመስልም።',
-        ),
-        isError: true,
-      );
-      return;
-    }
-
-    final count = data.values.fold<int>(0, (sum, list) => sum + list.length);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(context.tr('Restore backup?', 'ምትኬ ወደነበረበት ይመለስ?')),
-        content: Text(
-          context.tr(
-            'This will write $count records. Any existing records with the '
-            'same IDs will be replaced. This cannot be undone.',
-            'ይህ $count መዝገቦችን ይጽፋል። ተመሳሳይ መለያ ያላቸው ነባር መዝገቦች ይተካሉ። '
-            'ይህ አይመለስም።',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(context.tr('Cancel', 'ሰርዝ')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.alertRed,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(context.tr('Restore', 'መልስ')),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    try {
-      final database = AppDatabase();
-      await database.init();
-      await database.importFromJson(data);
-      ref.invalidate(activeLicenseProvider);
-      ref.invalidate(latestLicenseProvider);
-      if (!mounted) return;
-      _showSnack(context.tr('Backup restored', 'ምትኬ ተመልሷል'));
-    } catch (error) {
-      if (!mounted) return;
-      _showSnack(error.toString(), isError: true);
-    }
-  }
-
-  // -------------------------------------------------------------------------
   // License / session
   // -------------------------------------------------------------------------
 
-  void _copyDeviceId() {
-    final deviceId = _deviceId;
-    if (deviceId == null) return;
-    Clipboard.setData(ClipboardData(text: deviceId));
-    _showSnack(context.tr('Device ID copied', 'የመሳሪያ መለያ ተኮርጅቷል'));
+  void _copyInstallationId() {
+    final installationId = ref
+        .read(licenseAccessProvider)
+        .valueOrNull
+        ?.installationId;
+    if (installationId == null) return;
+    Clipboard.setData(ClipboardData(text: installationId));
+    _showSnack(context.tr('Installation ID copied', 'የተጫን መለያ ተኮርጅቷል'));
   }
 
   Future<void> _openReactivation() async {
+    final installationId = ref
+        .read(licenseAccessProvider)
+        .valueOrNull
+        ?.installationId;
     final activated = await showDialog<bool>(
       context: context,
-      builder: (_) => _ReactivateDialog(deviceId: _deviceId),
+      builder: (dialogContext) => _english(
+        dialogContext,
+        _ReactivateDialog(installationId: installationId),
+      ),
     );
     if (!mounted || activated != true) return;
+    ref.invalidate(licenseAccessProvider);
     ref.invalidate(activeLicenseProvider);
     ref.invalidate(latestLicenseProvider);
     _showSnack(context.tr('License activated', 'ፈቃድ ነቅቷል'));
@@ -488,39 +384,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 // Profile card
 // ---------------------------------------------------------------------------
 
+enum _PhotoAction { replace, remove }
+
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.profile, required this.onEdit});
+  const _ProfileCard({
+    required this.profile,
+    required this.onEdit,
+    required this.onPhoto,
+  });
 
   final UserProfile? profile;
   final VoidCallback? onEdit;
+  final VoidCallback? onPhoto;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final name = profile?.businessName?.trim();
+    final business = profile?.businessName?.trim();
     final owner = profile?.ownerName?.trim();
+    final hasBusiness = business != null && business.isNotEmpty;
+    final hasOwner = owner != null && owner.isNotEmpty;
+    final photoPath = profile?.profilePhotoPath;
 
-    return _SectionCard(
+    return SettingsCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? scheme.primary.withValues(alpha: 0.16)
-                  : AppColors.tealTint,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(
-              Icons.storefront_outlined,
-              size: 30,
-              color: isDark ? scheme.primary : AppColors.primaryTeal,
-            ),
-          ),
+          _PhotoAvatar(path: photoPath, isDark: isDark, onTap: onPhoto),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -530,13 +422,12 @@ class _ProfileCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        name == null || name.isEmpty
-                            ? context.tr('Merchant', 'ነጋዴ')
-                            : name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        hasBusiness
+                            ? business
+                            : (hasOwner ? owner : 'Merchant'),
                         style: TextStyle(
                           fontSize: 20,
+                          height: 1.2,
                           fontWeight: FontWeight.w800,
                           color: scheme.onSurface,
                         ),
@@ -546,14 +437,13 @@ class _ProfileCard extends StatelessWidget {
                     _ModeBadge(isDemo: profile?.isDemoMode ?? true),
                   ],
                 ),
-                if (owner != null && owner.isNotEmpty) ...[
+                if (hasBusiness && hasOwner) ...[
                   const SizedBox(height: 4),
                   Text(
                     owner,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 12.5,
+                      height: 1.25,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
@@ -570,13 +460,10 @@ class _ProfileCard extends StatelessWidget {
                     Flexible(
                       child: Text(
                         profile == null
-                            ? context.tr(
-                                'Profile unavailable',
-                                'መገለጫ አልተገኘም',
-                              )
+                            ? context.tr('Profile unavailable', 'መገለጫ አልተገኘም')
                             : context.tr(
                                 'Member since '
-                                '${DateHelper.formatDate(profile!.createdAt)}',
+                                    '${DateHelper.formatDate(profile!.createdAt)}',
                                 'ከ${DateHelper.formatDate(profile!.createdAt)} '
                                     'ጀምሮ',
                               ),
@@ -600,6 +487,81 @@ class _ProfileCard extends StatelessWidget {
               icon: const Icon(Icons.edit_outlined, size: 20),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// The merchant's own picture, with a camera badge. Tapping it opens the
+/// gallery; the picked file is copied into the app documents folder so a
+/// cache clear cannot blank the profile.
+class _PhotoAvatar extends StatelessWidget {
+  const _PhotoAvatar({
+    required this.path,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final String? path;
+  final bool isDark;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final file = path == null ? null : File(path!);
+    final hasPhoto = file != null && file.existsSync();
+
+    final tile = Container(
+      width: 66,
+      height: 66,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: isDark
+            ? scheme.primary.withValues(alpha: 0.16)
+            : AppColors.tealTint,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: hasPhoto
+          ? Image.file(file, fit: BoxFit.cover)
+          : Icon(
+              Icons.storefront_outlined,
+              size: 30,
+              color: isDark ? scheme.primary : AppColors.primaryTeal,
+            ),
+    );
+
+    return Tooltip(
+      message: hasPhoto ? 'Change photo' : 'Add your photo',
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            tile,
+            if (onTap != null)
+              Positioned(
+                right: -3,
+                bottom: -3,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: scheme.surface, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.photo_camera_outlined,
+                    size: 12,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -648,17 +610,20 @@ class _PaymentCard extends StatelessWidget {
     final telebirr = profile?.telebirrAccount;
     final bank = profile?.bankAccount;
     final bankName = profile?.bankName;
-    final hasAny =
-        [phone, telebirr, bank].any((value) => value != null && value.isNotEmpty);
+    final hasAny = [
+      phone,
+      telebirr,
+      bank,
+    ].any((value) => value != null && value.isNotEmpty);
 
-    return _SectionCard(
+    return SettingsCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
-                child: _SectionTitle(
+                child: SettingsSectionTitle(
                   context.tr('Payment details', 'የክፍያ ዝርዝር'),
                 ),
               ),
@@ -695,7 +660,7 @@ class _PaymentCard extends StatelessWidget {
                     child: Text(
                       context.tr(
                         'No payment information yet. Add your phone, Telebirr '
-                        'or bank account.',
+                            'or bank account.',
                         'እስካሁን የክፍያ መረጃ የለም። ስልክ፣ ቴሌብር ወይም የባንክ ሂሳብ ያክሉ።',
                       ),
                       style: TextStyle(
@@ -727,8 +692,8 @@ class _PaymentCard extends StatelessWidget {
               value: bank == null || bank.isEmpty
                   ? context.tr('Not set', 'አልተዘጋጀም')
                   : bankName == null || bankName.isEmpty
-                      ? bank
-                      : '$bankName · $bank',
+                  ? bank
+                  : '$bankName · $bank',
             ),
           ],
         ],
@@ -773,10 +738,7 @@ class _PaymentRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
           ),
         ),
         Text(
@@ -796,185 +758,58 @@ class _PaymentRow extends StatelessWidget {
 // Preferences
 // ---------------------------------------------------------------------------
 
-class _PreferencesCard extends StatelessWidget {
-  const _PreferencesCard({
-    required this.themeMode,
-    required this.locale,
-    required this.onThemeChanged,
-    required this.onLanguageChanged,
+class _LicenseCard extends StatelessWidget {
+  const _LicenseCard({
+    required this.access,
+    required this.isLoading,
+    required this.installationId,
+    required this.onCopyInstallationId,
+    required this.onReactivate,
   });
 
-  final ThemeMode themeMode;
-  final Locale locale;
-  final ValueChanged<ThemeMode> onThemeChanged;
-  final ValueChanged<String> onLanguageChanged;
+  final LicenseAccessState? access;
+  final bool isLoading;
+  final String? installationId;
+  final VoidCallback onCopyInstallationId;
+  final VoidCallback onReactivate;
 
-  @override
-  Widget build(BuildContext context) {
-    return _SectionCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _SectionTitle(context.tr('Appearance', 'አቀራረብ')),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _ChoiceTile(
-                  icon: Icons.light_mode_outlined,
-                  label: context.tr('Light', 'ብርሃን'),
-                  selected: themeMode == ThemeMode.light,
-                  onTap: () => onThemeChanged(ThemeMode.light),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ChoiceTile(
-                  icon: Icons.dark_mode_outlined,
-                  label: context.tr('Dark', 'ጨለማ'),
-                  selected: themeMode == ThemeMode.dark,
-                  onTap: () => onThemeChanged(ThemeMode.dark),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ChoiceTile(
-                  icon: Icons.brightness_auto_outlined,
-                  label: context.tr('System', 'ስርዓት'),
-                  selected: themeMode == ThemeMode.system,
-                  onTap: () => onThemeChanged(ThemeMode.system),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _SectionTitle(context.tr('Language', 'ቋንቋ')),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _ChoiceTile(
-                  icon: Icons.translate,
-                  label: 'English',
-                  selected: locale.languageCode == 'en',
-                  onTap: () => onLanguageChanged('en'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ChoiceTile(
-                  icon: Icons.translate,
-                  label: 'አማርኛ',
-                  selected: locale.languageCode == 'am',
-                  onTap: () => onLanguageChanged('am'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  String _planLabel(BuildContext context) {
+    final plan = access?.plan;
+    switch (plan) {
+      case null:
+        return context.tr('Free trial', 'ነጻ ሙከራ');
+      case 'trial':
+        return context.tr('Trial', 'ሙከራ');
+      case 'monthly':
+        return context.tr('Monthly', 'ወርሃዊ');
+      case 'lifetime':
+        return context.tr('Lifetime', 'ዘላለማዊ');
+      default:
+        return plan;
+    }
   }
-}
-
-class _ChoiceTile extends StatelessWidget {
-  const _ChoiceTile({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? scheme.primary.withValues(alpha: 0.10)
-              : scheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected
-                ? scheme.primary.withValues(alpha: 0.55)
-                : scheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              selected ? Icons.check_circle : icon,
-              size: 19,
-              color: selected ? scheme.primary : scheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 5),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                color: selected ? scheme.primary : scheme.onSurface,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// License card
-// ---------------------------------------------------------------------------
-
-class _LicenseCard extends StatelessWidget {
-  const _LicenseCard({
-    required this.license,
-    required this.isLoading,
-    required this.deviceId,
-    required this.onCopyDeviceId,
-    required this.onReactivate,
-  });
-
-  final LicenseModel? license;
-  final bool isLoading;
-  final String? deviceId;
-  final VoidCallback onCopyDeviceId;
-  final VoidCallback onReactivate;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final now = DateTime.now();
-    final isActive = license?.isValid ?? false;
-    final isExpired = license != null &&
-        (license!.isExpired || !now.isBefore(license!.expiresAt));
+    final isActive = access?.canPerformPaidOperations ?? false;
+    final status = access?.status;
+    final isTrial = status == LicenseAccessStatus.trial;
+    final isExpired =
+        status == LicenseAccessStatus.expired ||
+        status == LicenseAccessStatus.trialExpired;
     final statusColor = isActive
         ? AppColors.successGreen
         : isExpired
-            ? AppColors.alertAmber
-            : AppColors.alertRed;
+        ? AppColors.alertAmber
+        : AppColors.alertRed;
     final statusLabel = isActive
-        ? context.tr('Active', 'ንቁ')
+        ? (isTrial ? context.tr('Trial', 'ሙከራ') : context.tr('Active', 'ንቁ'))
         : isExpired
-            ? context.tr('Expired', 'ጊዜው አልፎበታል')
-            : context.tr('Invalid', 'ልክ ያልሆነ');
+        ? context.tr('Expired', 'ጊዜው አልፎበታል')
+        : context.tr('Blocked', 'ታግዷል');
 
-    return _SectionCard(
+    return SettingsCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1008,14 +843,12 @@ class _LicenseCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      license == null
+                      access == null
                           ? context.tr(
-                              'No license on this device',
-                              'በዚህ መሳሪያ ፈቃድ የለም',
+                              'Loading license status…',
+                              'የፈቃድ ሁኔታ በመጫን ላይ…',
                             )
-                          : '${license!.licenseType.displayName} · '
-                              '${context.tr('activated', 'ተነቅቷል')} '
-                              '${DateHelper.formatDate(license!.activatedAt)}',
+                          : _planLabel(context),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -1027,8 +860,7 @@ class _LicenseCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.13),
                   borderRadius: BorderRadius.circular(999),
@@ -1044,6 +876,16 @@ class _LicenseCard extends StatelessWidget {
               ),
             ],
           ),
+          if (access?.clockRollbackSuspected ?? false) ...[
+            const SizedBox(height: 10),
+            Text(
+              context.tr(
+                'Device clock appears set backwards. Set the correct date and time to continue.',
+                'የመሣሪያ ሰዓቱ ወደኋላ ተቀይሯል ይመስላል። ለመቀጠል ትክክለኛውን ቀንና ሰዓት ያስተካክሉ።',
+              ),
+              style: TextStyle(fontSize: 10, color: AppColors.alertAmber),
+            ),
+          ],
           if (isLoading) ...[
             const SizedBox(height: 12),
             const LinearProgressIndicator(minHeight: 2),
@@ -1056,14 +898,18 @@ class _LicenseCard extends StatelessWidget {
           const SizedBox(height: 12),
           _LicenseRow(
             label: context.tr('Expiry date', 'የማብቂያ ቀን'),
-            value: license == null
+            value: access == null
                 ? '—'
-                : DateHelper.formatDate(license!.expiresAt),
+                : access!.isLifetime
+                ? context.tr('Never', 'መቸም አይሆንም')
+                : (access!.expiresAt == null
+                      ? '—'
+                      : DateHelper.formatDate(access!.expiresAt!)),
           ),
           const SizedBox(height: 8),
           _LicenseRow(
             label: context.tr('Days remaining', 'ቀሪ ቀናት'),
-            value: isActive ? '${license!.daysRemaining}' : '0',
+            value: isActive ? '${access!.daysRemaining}' : '0',
           ),
           const SizedBox(height: 12),
           Container(
@@ -1079,7 +925,7 @@ class _LicenseCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        context.tr('Device ID', 'የመሳሪያ መለያ'),
+                        context.tr('Installation ID', 'የተጫን መለያ'),
                         style: TextStyle(
                           fontSize: 9.5,
                           color: scheme.onSurfaceVariant,
@@ -1087,7 +933,7 @@ class _LicenseCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        deviceId ?? context.tr('Loading…', 'በመጫን ላይ…'),
+                        installationId ?? context.tr('Loading…', 'በመጫን ላይ…'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -1101,8 +947,10 @@ class _LicenseCard extends StatelessWidget {
                   ),
                 ),
                 IconButton(
-                  onPressed: deviceId == null ? null : onCopyDeviceId,
-                  tooltip: context.tr('Copy device ID', 'መለያ ኮፒ'),
+                  onPressed: installationId == null
+                      ? null
+                      : onCopyInstallationId,
+                  tooltip: context.tr('Copy Installation ID', 'የተጫን መለያ ኮፒ'),
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.copy, size: 16),
                 ),
@@ -1110,6 +958,23 @@ class _LicenseCard extends StatelessWidget {
             ),
           ),
           if (!isActive) ...[
+            const SizedBox(height: 12),
+            Text(
+              context.tr(
+                'To renew: send your Installation ID and pay to Telebirr '
+                    '${AppStrings.supportPhone}. The activation key comes back '
+                    'from the same number. Your data stays available for viewing '
+                    'and export.',
+                'ለማደስ፦ የተጫን መለያዎን ይላኩና በቴሌብር '
+                    '${AppStrings.supportPhone} ይክፈሉ። የማንቂያ ኮዱ ከዚያው ቁጥር '
+                    'ይመለስልዎታል። መረጃዎ ለመመልከትና ለማውጣት መኖሩን ይቀጥላል።',
+              ),
+              style: TextStyle(
+                fontSize: 10.5,
+                height: 1.45,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -1123,7 +988,9 @@ class _LicenseCard extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.key_outlined, size: 18),
                 label: Text(
-                  context.tr('Reactivate license', 'ፈቃድ እንደገና አንቃ'),
+                  access?.hasLicense ?? false
+                      ? context.tr('Renew license', 'ፈቃድ አድስ')
+                      : context.tr('Activate license', 'ፈቃድ አንቃ'),
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
@@ -1149,10 +1016,7 @@ class _LicenseRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 11.5,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
           ),
         ),
         Text(
@@ -1169,128 +1033,124 @@ class _LicenseRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Shared section widgets
+// Edit profile dialog
 // ---------------------------------------------------------------------------
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.child});
+// ---------------------------------------------------------------------------
+// Support
+// ---------------------------------------------------------------------------
 
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.5),
-        ),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w800,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
-    );
-  }
-}
-
-class _ActionTile extends StatelessWidget {
-  const _ActionTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
+/// Appears the moment the trial or a licence stops covering paid operations:
+/// one number reaches the team, takes the Telebirr payment and returns the
+/// activation key.
+class _SupportCard extends StatelessWidget {
+  const _SupportCard();
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(11),
-              ),
-              child: Icon(icon, size: 19, color: scheme.primary),
+
+    return SettingsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SettingsSectionTitle('Need help or a licence?'),
+          const SizedBox(height: 6),
+          Text(
+            'Copy the Installation ID above and send it to '
+            '${AppStrings.supportTeam} on ${AppStrings.supportPhone}. Pay '
+            'through Telebirr to the same number and the activation key comes '
+            'straight back. Sales, inventory and expenses you already '
+            'recorded stay available.',
+            style: TextStyle(
+              fontSize: 11.5,
+              height: 1.5,
+              color: scheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: scheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            trailing ??
-                Icon(
-                  Icons.chevron_right,
-                  size: 20,
-                  color: scheme.onSurfaceVariant,
-                ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          _SupportRow(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Telebirr account',
+            value: AppStrings.supportPhone,
+          ),
+          const SizedBox(height: 8),
+          _SupportRow(
+            icon: Icons.chat_bubble_outline,
+            label: 'Call or SMS support',
+            value: '${AppStrings.supportPhone} · ${AppStrings.supportTeam}',
+          ),
+        ],
       ),
     );
   }
 }
 
+class _SupportRow extends StatelessWidget {
+  const _SupportRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: scheme.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 16, color: scheme.primary),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: value));
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Copied for support')));
+          },
+          tooltip: 'Copy',
+          visualDensity: VisualDensity.compact,
+          icon: const Icon(Icons.copy, size: 15),
+        ),
+      ],
+    );
+  }
+}
+
 // ---------------------------------------------------------------------------
-// Edit profile dialog
+// Profile form
 // ---------------------------------------------------------------------------
 
 class _ProfileFormDialog extends ConsumerStatefulWidget {
@@ -1312,10 +1172,12 @@ class _ProfileFormDialogState extends ConsumerState<_ProfileFormDialog> {
   @override
   void initState() {
     super.initState();
-    _businessName =
-        TextEditingController(text: widget.profile.businessName ?? '');
-    _businessNameAm =
-        TextEditingController(text: widget.profile.businessNameAm ?? '');
+    _businessName = TextEditingController(
+      text: widget.profile.businessName ?? '',
+    );
+    _businessNameAm = TextEditingController(
+      text: widget.profile.businessNameAm ?? '',
+    );
     _ownerName = TextEditingController(text: widget.profile.ownerName ?? '');
   }
 
@@ -1331,10 +1193,7 @@ class _ProfileFormDialogState extends ConsumerState<_ProfileFormDialog> {
     final name = _businessName.text.trim();
     if (name.isEmpty) {
       setState(() {
-        _error = context.tr(
-          'Business name is required.',
-          'የንግድ ስም ያስፈልጋል።',
-        );
+        _error = context.tr('Business name is required.', 'የንግድ ስም ያስፈልጋል።');
       });
       return;
     }
@@ -1411,7 +1270,7 @@ class _ProfileFormDialogState extends ConsumerState<_ProfileFormDialog> {
               TextField(
                 controller: _ownerName,
                 decoration: decoration(
-                  context.tr('Owner name', 'የባለቤት ስም'),
+                  context.tr('Owner full name', 'የባለቤት ሙሉ ስም'),
                 ),
               ),
               if (_error != null) ...[
@@ -1473,11 +1332,13 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
   void initState() {
     super.initState();
     _phone = TextEditingController(text: widget.profile.phoneNumber ?? '');
-    _telebirr =
-        TextEditingController(text: widget.profile.telebirrAccount ?? '');
+    _telebirr = TextEditingController(
+      text: widget.profile.telebirrAccount ?? '',
+    );
     _bankName = TextEditingController(text: widget.profile.bankName ?? '');
-    _bankAccount =
-        TextEditingController(text: widget.profile.bankAccount ?? '');
+    _bankAccount = TextEditingController(
+      text: widget.profile.bankAccount ?? '',
+    );
   }
 
   @override
@@ -1577,9 +1438,7 @@ class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
                 onChanged: (_) {
                   if (_error != null) setState(() => _error = null);
                 },
-                decoration: decoration(
-                  context.tr('Phone number', 'የስልክ ቁጥር'),
-                ),
+                decoration: decoration(context.tr('Phone number', 'የስልክ ቁጥር')),
               ),
               const SizedBox(height: 10),
               TextField(
@@ -1688,10 +1547,7 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
         'የአሁኑ የይለፍ ቃል ትክክል አይደለም።',
       );
     } else if (next.length < 6) {
-      error = context.tr(
-        'Use at least 6 characters.',
-        'ቢያንስ 6 ፊደሎችን ይጠቀሙ።',
-      );
+      error = context.tr('Use at least 6 characters.', 'ቢያንስ 6 ፊደሎችን ይጠቀሙ።');
     } else if (!RegExp(r'[A-Za-z]').hasMatch(next) ||
         !RegExp(r'[0-9]').hasMatch(next)) {
       error = context.tr(
@@ -1699,15 +1555,9 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
         'ቢያንስ አንድ ፊደል እና አንድ ቁጥር ያካትቱ።',
       );
     } else if (next == current) {
-      error = context.tr(
-        'Choose a different password.',
-        'የተለየ የይለፍ ቃል ይምረጡ።',
-      );
+      error = context.tr('Choose a different password.', 'የተለየ የይለፍ ቃል ይምረጡ።');
     } else if (next != confirm) {
-      error = context.tr(
-        'Passwords do not match.',
-        'የይለፍ ቃሎቹ አይመሳሰሉም።',
-      );
+      error = context.tr('Passwords do not match.', 'የይለፍ ቃሎቹ አይመሳሰሉም።');
     }
     if (error != null) {
       setState(() => _error = error);
@@ -1803,10 +1653,7 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
                   'Minimum 6 characters with at least one letter and number.',
                   'ቢያንስ 6 ፊደሎች ከአንድ ፊደል እና ቁጥር ጋር።',
                 ),
-                style: TextStyle(
-                  fontSize: 10,
-                  color: scheme.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 10, color: scheme.onSurfaceVariant),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 10),
@@ -1843,122 +1690,13 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
 }
 
 // ---------------------------------------------------------------------------
-// Restore dialog
-// ---------------------------------------------------------------------------
-
-class _RestoreDialog extends StatefulWidget {
-  const _RestoreDialog();
-
-  @override
-  State<_RestoreDialog> createState() => _RestoreDialogState();
-}
-
-class _RestoreDialogState extends State<_RestoreDialog> {
-  final _controller = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final raw = _controller.text.trim();
-    if (_tryParseBackup(raw) == null) {
-      setState(() {
-        _error = context.tr(
-          'Paste a valid Efoy backup JSON.',
-          'ትክክለኛ የኢፎይ ምትኬ JSON ይለጥፉ።',
-        );
-      });
-      return;
-    }
-    Navigator.of(context).pop(raw);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AlertDialog(
-      title: Text(
-        context.tr('Restore data', 'ውሂብ መልስ'),
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-      ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.tr(
-                  'Open your exported backup file and paste its JSON here.',
-                  'የተላከውን የምትኬ ፋይል ይክፈቱና JSON ይለጥፉ።',
-                ),
-                style: TextStyle(
-                  fontSize: 11,
-                  height: 1.4,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _controller,
-                minLines: 5,
-                maxLines: 8,
-                autofocus: true,
-                style: const TextStyle(fontSize: 11, height: 1.4),
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                decoration: InputDecoration(
-                  hintText: '{"products": [...], "sales": [...]}',
-                  filled: true,
-                  fillColor: isDark
-                      ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
-                      : Colors.white,
-                ),
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _error!,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.alertRed,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.tr('Cancel', 'ሰርዝ')),
-        ),
-        FilledButton(
-          onPressed: _submit,
-          child: Text(context.tr('Validate backup', 'ምትኬ አረጋግጥ')),
-        ),
-      ],
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Reactivate license dialog
 // ---------------------------------------------------------------------------
 
 class _ReactivateDialog extends ConsumerStatefulWidget {
-  const _ReactivateDialog({required this.deviceId});
+  const _ReactivateDialog({required this.installationId});
 
-  final String? deviceId;
+  final String? installationId;
 
   @override
   ConsumerState<_ReactivateDialog> createState() => _ReactivateDialogState();
@@ -1976,20 +1714,10 @@ class _ReactivateDialogState extends ConsumerState<_ReactivateDialog> {
   }
 
   Future<void> _activate() async {
-    final key = _controller.text.trim();
-    if (key.isEmpty) {
+    final code = _controller.text.trim();
+    if (code.isEmpty) {
       setState(() {
-        _error = context.tr('Enter a license key.', 'የፈቃድ ቁልፍ ያስገቡ።');
-      });
-      return;
-    }
-    final deviceId = widget.deviceId;
-    if (deviceId == null) {
-      setState(() {
-        _error = context.tr(
-          'Device ID is unavailable.',
-          'የመሳሪያ መለያ አልተገኘም።',
-        );
+        _error = context.tr('Enter an activation code.', 'የማንቂያ ኮድ ያስገቡ።');
       });
       return;
     }
@@ -2000,31 +1728,27 @@ class _ReactivateDialogState extends ConsumerState<_ReactivateDialog> {
     });
 
     try {
-      final result = LicenseVerifier.verifyLicense(
-        licenseKey: key,
-        deviceId: deviceId,
-      );
-      if (!result.isValid ||
-          result.expiryDate == null ||
-          result.licenseType == null) {
+      final service = await ref.read(licenseServiceProvider.future);
+      final result = await service.activate(code);
+      if (!mounted) return;
+
+      if (!result.success) {
         setState(() {
           _saving = false;
-          _error = result.errorMessage ?? 'License verification failed';
+          _error = result.storageFailure
+              ? context.tr(
+                  'Secure storage is unavailable on this device.',
+                  'የደህንነት ማከማቻ በዚህ መሣሪያ አይገኝም።',
+                )
+              : context.tr(
+                  'This code was rejected. Make sure it was issued for this '
+                      'installation and has not expired.',
+                  'ይህ ኮድ አልተቀበለም። ለዚህ ተጫን መለያ እንደተሰጠና ጊዜው እንዳልአለፈ ያረጋግጡ።',
+                );
         });
         return;
       }
 
-      final repository = await ref.read(userRepositoryProvider.future);
-      await repository.activateLicense(
-        LicenseModel(
-          deviceId: result.deviceId ?? deviceId,
-          licenseKey: key,
-          activatedAt: DateTime.now(),
-          expiresAt: result.expiryDate!,
-          licenseType: result.licenseType!,
-        ),
-      );
-      if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) return;
@@ -2042,7 +1766,7 @@ class _ReactivateDialogState extends ConsumerState<_ReactivateDialog> {
 
     return AlertDialog(
       title: Text(
-        context.tr('Reactivate license', 'ፈቃድ እንደገና አንቃ'),
+        context.tr('Renew or activate license', 'ፈቃድ አድስ ወይም አንቃ'),
         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
       ),
       content: SizedBox(
@@ -2054,10 +1778,16 @@ class _ReactivateDialogState extends ConsumerState<_ReactivateDialog> {
             children: [
               Text(
                 context.tr(
-                  'Enter the license key issued for device '
-                  '${widget.deviceId ?? '—'}.',
-                  'ለመሳሪያ ${widget.deviceId ?? '—'} የተሰጠውን የፈቃድ ቁልፍ '
-                  'ያስገቡ።',
+                  'Send Installation ID '
+                      '${widget.installationId ?? '—'} by call or SMS to '
+                      '${AppStrings.supportPhone} (${AppStrings.supportTeam}), '
+                      'pay with Telebirr to that number, then enter the '
+                      'activation key you get back.',
+                  'የተጫን መለያ '
+                      '${widget.installationId ?? '—'} በስልክ ወይም SMS ለ'
+                      '${AppStrings.supportPhone} (${AppStrings.supportTeam}) '
+                      'ይላኩ፣ በዚያ ቁጥር በቴሌብር ይክፈሉ፣ ከዚያ የተሰጠዎትን የማንቂያ ኮድ '
+                      'ያስገቡ።',
                 ),
                 style: TextStyle(
                   fontSize: 11,
@@ -2076,7 +1806,7 @@ class _ReactivateDialogState extends ConsumerState<_ReactivateDialog> {
                   if (_error != null) setState(() => _error = null);
                 },
                 decoration: InputDecoration(
-                  labelText: context.tr('License key', 'የፈቃድ ቁልፍ'),
+                  labelText: context.tr('Activation code', 'የማንቂያ ኮድ'),
                   filled: true,
                   fillColor: isDark
                       ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
@@ -2128,6 +1858,7 @@ UserProfile _copyProfile(UserProfile source) {
     businessName: source.businessName,
     businessNameAm: source.businessNameAm,
     ownerName: source.ownerName,
+    profilePhotoPath: source.profilePhotoPath,
     phoneNumber: source.phoneNumber,
     telebirrAccount: source.telebirrAccount,
     bankAccount: source.bankAccount,
@@ -2145,29 +1876,4 @@ UserProfile _copyProfile(UserProfile source) {
 String? _blankToNull(String value) {
   final trimmed = value.trim();
   return trimmed.isEmpty ? null : trimmed;
-}
-
-String _two(int value) => value.toString().padLeft(2, '0');
-
-Map<String, List<Map<String, dynamic>>>? _tryParseBackup(String raw) {
-  try {
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map) return null;
-    final data = <String, List<Map<String, dynamic>>>{};
-    for (final entry in decoded.entries) {
-      final key = entry.key.toString();
-      if (!_backupKeys.contains(key)) continue;
-      final value = entry.value;
-      if (value is! List) return null;
-      final items = <Map<String, dynamic>>[];
-      for (final item in value) {
-        if (item is! Map) return null;
-        items.add(Map<String, dynamic>.from(item));
-      }
-      data[key] = items;
-    }
-    return data.isEmpty ? null : data;
-  } catch (_) {
-    return null;
-  }
 }

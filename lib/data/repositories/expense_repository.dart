@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 
+import '../../core/licensing/license_gate.dart';
 import '../models/expense_model.dart';
 import 'base_repository.dart';
 
@@ -22,9 +23,12 @@ class ExpenseTotals {
 }
 
 class ExpenseRepository implements BaseRepository<ExpenseModel> {
-  ExpenseRepository(this._isar);
+  ExpenseRepository(this._isar, this._licenseGate);
 
   final Isar _isar;
+
+  /// Enforces the offline licensing policy before expense mutations.
+  final LicenseGate _licenseGate;
 
   @override
   Future<ExpenseModel?> getById(int id) => _isar.expenseModels.get(id);
@@ -58,6 +62,7 @@ class ExpenseRepository implements BaseRepository<ExpenseModel> {
 
   @override
   Future<ExpenseModel> create(ExpenseModel entity) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.manageExpenses);
     await _isar.writeTxn(() async {
       entity.id = await _isar.expenseModels.put(entity);
     });
@@ -66,6 +71,7 @@ class ExpenseRepository implements BaseRepository<ExpenseModel> {
 
   @override
   Future<ExpenseModel> update(ExpenseModel entity) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.manageExpenses);
     await _isar.writeTxn(() async {
       await _isar.expenseModels.put(entity);
     });
@@ -75,6 +81,7 @@ class ExpenseRepository implements BaseRepository<ExpenseModel> {
   /// Soft-delete so CapEx/OpEx history stays auditable.
   @override
   Future<void> delete(int id) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.manageExpenses);
     await _isar.writeTxn(() async {
       final expense = await _isar.expenseModels.get(id);
       if (expense == null) return;

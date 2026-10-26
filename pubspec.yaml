@@ -9,10 +9,18 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
+
+  # Amharic + English Material/Widgets/Cupertino strings
+  flutter_localizations:
+    sdk: flutter
+
   # State Management
   flutter_riverpod: ^2.5.1
-  
+
+  # Offline licensing domain (payload codec + Ed25519 verification)
+  efoy_licensing:
+    path: packages/efoy_licensing
+
   # Local Database
   isar: ^3.1.0+1
   isar_flutter_libs: ^3.1.0+1
@@ -35,9 +43,18 @@ dependencies:
   crypto: ^3.0.3
   device_info_plus: ^10.1.2
   flutter_secure_storage: ^9.2.2
-  
+
+  # Merchant profile photo
+  image_picker: ^1.2.4
+
+  # Reports: Excel export + handing the file to the user.
+  # Pinned to 12.x: share_plus >=13 needs win32 ^6, which conflicts with the
+  # win32 <6 ceiling pulled in by device_info_plus 10.1.2.
+  excel: ^4.0.6
+  share_plus: ^12.0.2
+
   # Utilities
-  intl: ^0.19.0
+  intl: ^0.20.2
   uuid: ^4.4.0
 
 dev_dependencies:
@@ -46,6 +63,21 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   isar_generator: ^3.1.0+1
   build_runner: ^2.4.11
+  flutter_launcher_icons: ^0.14.4
+  # Signing support for license test fixtures only. The distributed app never
+  # signs anything.
+  cryptography: ^2.7.0
+
+flutter_launcher_icons:
+  # Legacy icons use the brand mark on white; the full lockup with the
+  # "Finally, business made easy" tagline is illegible at 48px.
+  image_path: "assets/icon_src/efoy_mark_square.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  background_color_android: "#FFFFFF"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon_src/efoy_mark_foreground.png"
 
 flutter:
   uses-material-design: true

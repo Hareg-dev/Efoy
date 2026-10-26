@@ -6,12 +6,20 @@ part 'license_model.g.dart';
 class LicenseModel {
   Id id = Isar.autoIncrement;
 
-  // Device binding
-  late String deviceId; // Hardware fingerprint
-  
+  // Installation binding (random installation identifier, not hardware).
+  late String deviceId;
+
   // License details
-  late String licenseKey; // Encrypted activation key
-  
+  late String licenseKey; // Full signed activation code
+
+  /// Unique id minted by the issuer (e.g. EFY-9F3A61C2-7B04).
+  /// Nullable for records created by legacy versions.
+  String? licenseId;
+
+  /// When the issuer created this license (payload `iat`).
+  /// Nullable for records created by legacy versions.
+  DateTime? issuedAt;
+
   @Index()
   late DateTime activatedAt;
   late DateTime expiresAt;
@@ -34,11 +42,26 @@ class LicenseModel {
     required this.activatedAt,
     required this.expiresAt,
     required this.licenseType,
+    this.licenseId,
+    this.issuedAt,
     this.isActive = true,
     this.isExpired = false,
     this.storeName,
     this.ownerPhone,
   });
+
+  /// Number of days left before expiry (0 when already expired).
+  int get daysRemainingOrZero {
+    final remaining = expiresAt.difference(DateTime.now());
+    return remaining.isNegative ? 0 : remaining.inDays;
+  }
+
+  /// True when the license expires within the next seven days.
+  bool get isExpiringSoon {
+    if (!isValid) return false;
+    final days = daysRemainingOrZero;
+    return days > 0 && days <= 7;
+  }
 
   bool get isValid {
     if (!isActive || isExpired) return false;
@@ -55,6 +78,8 @@ class LicenseModel {
       'id': id,
       'deviceId': deviceId,
       'licenseKey': licenseKey,
+      'licenseId': licenseId,
+      'issuedAt': issuedAt?.toIso8601String(),
       'activatedAt': activatedAt.toIso8601String(),
       'expiresAt': expiresAt.toIso8601String(),
       'licenseType': licenseType.name,
@@ -69,6 +94,10 @@ class LicenseModel {
     return LicenseModel(
       deviceId: json['deviceId'] as String,
       licenseKey: json['licenseKey'] as String,
+      licenseId: json['licenseId'] as String?,
+      issuedAt: json['issuedAt'] != null
+          ? DateTime.parse(json['issuedAt'] as String)
+          : null,
       activatedAt: json['activatedAt'] != null ? DateTime.parse(json['activatedAt'] as String) : DateTime.now(),
       expiresAt: json['expiresAt'] != null ? DateTime.parse(json['expiresAt'] as String) : DateTime.now(),
       licenseType: LicenseType.values.byName(json['licenseType'] as String),
@@ -81,7 +110,7 @@ class LicenseModel {
 }
 
 enum LicenseType {
-  trial, // 7 or 14 days
+  trial,
   monthly,
   yearly,
   lifetime,

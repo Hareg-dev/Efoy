@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_theme.dart';
+import '../../core/licensing/license_gate.dart';
 import '../../core/security/password_hasher.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/l10n.dart';
@@ -68,6 +69,15 @@ class _CartSheetState extends ConsumerState<CartSheet> {
           );
       if (!mounted) return;
       Navigator.of(context).pop(true);
+    } on LicenseRequiredException {
+      _showError(
+        context.tr(
+          'Your license or trial has ended. Renew in Profile to record sales. '
+          'Existing records stay available.',
+          'ፈቃድዎ ወይም ሙከራዎ አብቋል። ሽያጭ ለመመዝገብ በመገለጫ ውስጥ ያድሱ። '
+          'ያሉት መዛግብቶች ይገኛሉ።',
+        ),
+      );
     } on CartException catch (error) {
       _showError(error.message);
     } catch (error) {

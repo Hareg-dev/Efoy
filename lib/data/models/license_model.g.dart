@@ -27,49 +27,69 @@ const LicenseModelSchema = CollectionSchema(
       name: r'daysRemaining',
       type: IsarType.long,
     ),
-    r'deviceId': PropertySchema(
+    r'daysRemainingOrZero': PropertySchema(
       id: 2,
+      name: r'daysRemainingOrZero',
+      type: IsarType.long,
+    ),
+    r'deviceId': PropertySchema(
+      id: 3,
       name: r'deviceId',
       type: IsarType.string,
     ),
     r'expiresAt': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'expiresAt',
       type: IsarType.dateTime,
     ),
     r'isActive': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'isActive',
       type: IsarType.bool,
     ),
     r'isExpired': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'isExpired',
       type: IsarType.bool,
     ),
+    r'isExpiringSoon': PropertySchema(
+      id: 7,
+      name: r'isExpiringSoon',
+      type: IsarType.bool,
+    ),
     r'isValid': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'isValid',
       type: IsarType.bool,
     ),
+    r'issuedAt': PropertySchema(
+      id: 9,
+      name: r'issuedAt',
+      type: IsarType.dateTime,
+    ),
+    r'licenseId': PropertySchema(
+      id: 10,
+      name: r'licenseId',
+      type: IsarType.string,
+    ),
     r'licenseKey': PropertySchema(
-      id: 7,
+      id: 11,
       name: r'licenseKey',
       type: IsarType.string,
     ),
     r'licenseType': PropertySchema(
-      id: 8,
+      id: 12,
       name: r'licenseType',
       type: IsarType.byte,
       enumMap: _LicenseModellicenseTypeEnumValueMap,
     ),
     r'ownerPhone': PropertySchema(
-      id: 9,
+      id: 13,
       name: r'ownerPhone',
       type: IsarType.string,
     ),
     r'storeName': PropertySchema(
-      id: 10,
+      id: 14,
       name: r'storeName',
       type: IsarType.string,
     )
@@ -122,6 +142,12 @@ int _licenseModelEstimateSize(
 ) {
   var bytesCount = offsets.last;
   bytesCount += 3 + object.deviceId.length * 3;
+  {
+    final value = object.licenseId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.licenseKey.length * 3;
   {
     final value = object.ownerPhone;
@@ -146,15 +172,19 @@ void _licenseModelSerialize(
 ) {
   writer.writeDateTime(offsets[0], object.activatedAt);
   writer.writeLong(offsets[1], object.daysRemaining);
-  writer.writeString(offsets[2], object.deviceId);
-  writer.writeDateTime(offsets[3], object.expiresAt);
-  writer.writeBool(offsets[4], object.isActive);
-  writer.writeBool(offsets[5], object.isExpired);
-  writer.writeBool(offsets[6], object.isValid);
-  writer.writeString(offsets[7], object.licenseKey);
-  writer.writeByte(offsets[8], object.licenseType.index);
-  writer.writeString(offsets[9], object.ownerPhone);
-  writer.writeString(offsets[10], object.storeName);
+  writer.writeLong(offsets[2], object.daysRemainingOrZero);
+  writer.writeString(offsets[3], object.deviceId);
+  writer.writeDateTime(offsets[4], object.expiresAt);
+  writer.writeBool(offsets[5], object.isActive);
+  writer.writeBool(offsets[6], object.isExpired);
+  writer.writeBool(offsets[7], object.isExpiringSoon);
+  writer.writeBool(offsets[8], object.isValid);
+  writer.writeDateTime(offsets[9], object.issuedAt);
+  writer.writeString(offsets[10], object.licenseId);
+  writer.writeString(offsets[11], object.licenseKey);
+  writer.writeByte(offsets[12], object.licenseType.index);
+  writer.writeString(offsets[13], object.ownerPhone);
+  writer.writeString(offsets[14], object.storeName);
 }
 
 LicenseModel _licenseModelDeserialize(
@@ -165,16 +195,18 @@ LicenseModel _licenseModelDeserialize(
 ) {
   final object = LicenseModel(
     activatedAt: reader.readDateTime(offsets[0]),
-    deviceId: reader.readString(offsets[2]),
-    expiresAt: reader.readDateTime(offsets[3]),
-    isActive: reader.readBoolOrNull(offsets[4]) ?? true,
-    isExpired: reader.readBoolOrNull(offsets[5]) ?? false,
-    licenseKey: reader.readString(offsets[7]),
+    deviceId: reader.readString(offsets[3]),
+    expiresAt: reader.readDateTime(offsets[4]),
+    isActive: reader.readBoolOrNull(offsets[5]) ?? true,
+    isExpired: reader.readBoolOrNull(offsets[6]) ?? false,
+    issuedAt: reader.readDateTimeOrNull(offsets[9]),
+    licenseId: reader.readStringOrNull(offsets[10]),
+    licenseKey: reader.readString(offsets[11]),
     licenseType: _LicenseModellicenseTypeValueEnumMap[
-            reader.readByteOrNull(offsets[8])] ??
+            reader.readByteOrNull(offsets[12])] ??
         LicenseType.trial,
-    ownerPhone: reader.readStringOrNull(offsets[9]),
-    storeName: reader.readStringOrNull(offsets[10]),
+    ownerPhone: reader.readStringOrNull(offsets[13]),
+    storeName: reader.readStringOrNull(offsets[14]),
   );
   object.id = id;
   return object;
@@ -192,24 +224,32 @@ P _licenseModelDeserializeProp<P>(
     case 1:
       return (reader.readLong(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readLong(offset)) as P;
     case 3:
-      return (reader.readDateTime(offset)) as P;
-    case 4:
-      return (reader.readBoolOrNull(offset) ?? true) as P;
-    case 5:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
-    case 6:
-      return (reader.readBool(offset)) as P;
-    case 7:
       return (reader.readString(offset)) as P;
+    case 4:
+      return (reader.readDateTime(offset)) as P;
+    case 5:
+      return (reader.readBoolOrNull(offset) ?? true) as P;
+    case 6:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 7:
+      return (reader.readBool(offset)) as P;
     case 8:
+      return (reader.readBool(offset)) as P;
+    case 9:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 10:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
+      return (reader.readString(offset)) as P;
+    case 12:
       return (_LicenseModellicenseTypeValueEnumMap[
               reader.readByteOrNull(offset)] ??
           LicenseType.trial) as P;
-    case 9:
+    case 13:
       return (reader.readStringOrNull(offset)) as P;
-    case 10:
+    case 14:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -590,6 +630,62 @@ extension LicenseModelQueryFilter
   }
 
   QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      daysRemainingOrZeroEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'daysRemainingOrZero',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      daysRemainingOrZeroGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'daysRemainingOrZero',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      daysRemainingOrZeroLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'daysRemainingOrZero',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      daysRemainingOrZeroBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'daysRemainingOrZero',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
       deviceIdEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -855,11 +951,249 @@ extension LicenseModelQueryFilter
   }
 
   QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      isExpiringSoonEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isExpiringSoon',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
       isValidEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'isValid',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      issuedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'issuedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      issuedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'issuedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      issuedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'issuedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      issuedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'issuedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      issuedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'issuedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      issuedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'issuedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'licenseId',
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'licenseId',
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'licenseId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'licenseId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'licenseId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'licenseId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'licenseId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'licenseId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'licenseId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'licenseId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'licenseId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterFilterCondition>
+      licenseIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'licenseId',
+        value: '',
       ));
     });
   }
@@ -1399,6 +1733,20 @@ extension LicenseModelQuerySortBy
     });
   }
 
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      sortByDaysRemainingOrZero() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'daysRemainingOrZero', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      sortByDaysRemainingOrZeroDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'daysRemainingOrZero', Sort.desc);
+    });
+  }
+
   QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByDeviceId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'deviceId', Sort.asc);
@@ -1447,6 +1795,20 @@ extension LicenseModelQuerySortBy
     });
   }
 
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      sortByIsExpiringSoon() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isExpiringSoon', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      sortByIsExpiringSoonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isExpiringSoon', Sort.desc);
+    });
+  }
+
   QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByIsValid() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isValid', Sort.asc);
@@ -1456,6 +1818,30 @@ extension LicenseModelQuerySortBy
   QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByIsValidDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isValid', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByIssuedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'issuedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByIssuedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'issuedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByLicenseId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'licenseId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> sortByLicenseIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'licenseId', Sort.desc);
     });
   }
 
@@ -1539,6 +1925,20 @@ extension LicenseModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      thenByDaysRemainingOrZero() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'daysRemainingOrZero', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      thenByDaysRemainingOrZeroDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'daysRemainingOrZero', Sort.desc);
+    });
+  }
+
   QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByDeviceId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'deviceId', Sort.asc);
@@ -1599,6 +1999,20 @@ extension LicenseModelQuerySortThenBy
     });
   }
 
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      thenByIsExpiringSoon() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isExpiringSoon', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy>
+      thenByIsExpiringSoonDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isExpiringSoon', Sort.desc);
+    });
+  }
+
   QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByIsValid() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isValid', Sort.asc);
@@ -1608,6 +2022,30 @@ extension LicenseModelQuerySortThenBy
   QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByIsValidDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isValid', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByIssuedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'issuedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByIssuedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'issuedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByLicenseId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'licenseId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QAfterSortBy> thenByLicenseIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'licenseId', Sort.desc);
     });
   }
 
@@ -1678,6 +2116,13 @@ extension LicenseModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<LicenseModel, LicenseModel, QDistinct>
+      distinctByDaysRemainingOrZero() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'daysRemainingOrZero');
+    });
+  }
+
   QueryBuilder<LicenseModel, LicenseModel, QDistinct> distinctByDeviceId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1703,9 +2148,29 @@ extension LicenseModelQueryWhereDistinct
     });
   }
 
+  QueryBuilder<LicenseModel, LicenseModel, QDistinct>
+      distinctByIsExpiringSoon() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isExpiringSoon');
+    });
+  }
+
   QueryBuilder<LicenseModel, LicenseModel, QDistinct> distinctByIsValid() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isValid');
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QDistinct> distinctByIssuedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'issuedAt');
+    });
+  }
+
+  QueryBuilder<LicenseModel, LicenseModel, QDistinct> distinctByLicenseId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'licenseId', caseSensitive: caseSensitive);
     });
   }
 
@@ -1757,6 +2222,13 @@ extension LicenseModelQueryProperty
     });
   }
 
+  QueryBuilder<LicenseModel, int, QQueryOperations>
+      daysRemainingOrZeroProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'daysRemainingOrZero');
+    });
+  }
+
   QueryBuilder<LicenseModel, String, QQueryOperations> deviceIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'deviceId');
@@ -1781,9 +2253,27 @@ extension LicenseModelQueryProperty
     });
   }
 
+  QueryBuilder<LicenseModel, bool, QQueryOperations> isExpiringSoonProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isExpiringSoon');
+    });
+  }
+
   QueryBuilder<LicenseModel, bool, QQueryOperations> isValidProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isValid');
+    });
+  }
+
+  QueryBuilder<LicenseModel, DateTime?, QQueryOperations> issuedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'issuedAt');
+    });
+  }
+
+  QueryBuilder<LicenseModel, String?, QQueryOperations> licenseIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'licenseId');
     });
   }
 

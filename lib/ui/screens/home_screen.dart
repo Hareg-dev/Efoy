@@ -2,30 +2,36 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_theme.dart';
+import '../../core/licensing/license_access_state.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/l10n.dart';
+import '../../logic/calculators/profit_engine.dart';
+import '../../logic/providers/license_provider.dart';
 import '../../logic/providers/profit_provider.dart';
+import '../../logic/providers/repository_providers.dart';
 import '../animations/pulsing_dot.dart';
 import '../widgets/alert_card.dart';
 import '../widgets/net_profit_card.dart';
+import '../widgets/screen_header.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({
-    super.key,
-    this.onQuickSell,
-    this.onOpenProfile,
-  });
+  const HomeScreen({super.key, this.onQuickSell, this.onOpenSettings});
 
   final VoidCallback? onQuickSell;
-  final VoidCallback? onOpenProfile;
+  final VoidCallback? onOpenSettings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summaryAsync = ref.watch(dashboardSummaryProvider);
+    final accessAsync = ref.watch(licenseAccessProvider);
+    final profile = ref.watch(userProfileProvider).valueOrNull;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
+    final shopName = profile?.businessName?.trim().isNotEmpty == true
+        ? profile!.businessName!.trim()
+        : context.tr('HOME', 'መነሻ');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -40,57 +46,28 @@ class HomeScreen extends ConsumerWidget {
                   AppTheme.spaceL,
                   0,
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryDark,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(
-                        Icons.check,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'እፎይ',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: isDark
-                                  ? AppColors.emerald200
-                                  : AppColors.primaryDark,
-                            ),
-                          ),
-                          Text(
-                            'በእፎይ እርፍ ይበሉ',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                child: ScreenHeader(
+                  leading: const HeaderBrand(
+                    child: Icon(Icons.check, color: Colors.white, size: 22),
+                  ),
+                  title: shopName,
+                  subtitle: context.tr(
+                    'Rest easy - business made easy',
+                    'በእፎይ እርፍ ይበሉ',
+                  ),
+                  actions: [
                     IconButton(
                       tooltip: context.tr('Settings', 'ቅንብሮች'),
-                      onPressed: onOpenProfile,
-                      icon: Icon(
-                        Icons.settings_outlined,
-                        color: scheme.onSurfaceVariant,
-                      ),
+                      onPressed: onOpenSettings,
+                      icon: const Icon(Icons.settings_outlined),
+                      color: scheme.onSurfaceVariant,
                     ),
                   ],
                 ),
               ),
+            ),
+            SliverToBoxAdapter(
+              child: _LicenseStatusBanner(access: accessAsync.valueOrNull),
             ),
             const SliverToBoxAdapter(child: NetProfitCard()),
             SliverToBoxAdapter(
@@ -119,10 +96,7 @@ class HomeScreen extends ConsumerWidget {
                           Expanded(
                             child: _MetricCard(
                               icon: Icons.trending_up,
-                              label: context.tr(
-                                'SALES TODAY',
-                                'የዛሬ ሽያጮች',
-                              ),
+                              label: context.tr('SALES TODAY', 'የዛሬ ሽያጮች'),
                               value: CurrencyFormatter.formatBirrWhole(
                                 summary.salesAmount,
                               ),
@@ -161,21 +135,25 @@ class HomeScreen extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final alerts = <Widget>[];
 
-    if (summary.lowStockProducts.isNotEmpty) {
-      final names = summary.lowStockProducts
+    if (summary.needsRestockProducts.isNotEmpty) {
+      final names = summary.needsRestockProducts
           .take(3)
-          .map((product) => '${product.name} (${product.currentStock})')
+          .map(
+            (product) => product.isOutOfStock
+                ? '${product.name} (0)'
+                : '${product.name} (${product.currentStock})',
+          )
           .join(', ');
-      final remaining = summary.lowStockProducts.length - 3;
+      final remaining = summary.needsRestockProducts.length - 3;
       alerts.add(
         AlertCard(
           type: AlertType.amber,
           icon: Icons.inventory_2_outlined,
-          title: context.tr('INVENTORY LOW', 'ክምችት ወርዷል'),
+          title: context.tr('NEEDS RESTOCK', 'እቃ ያስፈልጋል'),
           subtitle: remaining > 0
               ? context.tr(
-                  '$names and $remaining more need restocking',
-                  '$names እና ተጨማሪ $remaining እቃዎች መሙላት ይፈልጋሉ',
+                  '$names and $remaining more to reorder',
+                  '$names እና ተጨማሪ $remaining ለመግዛት',
                 )
               : names,
           showPulse: true,
@@ -196,15 +174,16 @@ class HomeScreen extends ConsumerWidget {
       );
     }
     if (summary.grossProfitMargin != null &&
-        summary.grossProfitMargin! < 0.05) {
+        summary.grossProfitMargin! < ProfitEngine.criticalGrossMargin) {
+      final criticalPercent = (ProfitEngine.criticalGrossMargin * 100).round();
       alerts.add(
         AlertCard(
           type: AlertType.crimson,
           icon: Icons.warning_amber_rounded,
           title: context.tr('PROFIT HEALTH: CAUTION', 'የትርፍ ሁኔታ፡ ጥንቃቄ'),
           subtitle: context.tr(
-            'Today\'s gross profit margin is below 5%.',
-            'የዛሬ አጠቃላይ ትርፍ ህዳግ ከ5% በታች ነው።',
+            'Today\'s gross profit margin is below $criticalPercent%.',
+            'የዛሬ አጠቃላይ ትርፍ ህዳግ ከ$criticalPercent% በታች ነው።',
           ),
         ),
       );
@@ -380,6 +359,126 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+/// Trial countdown / expiry / recovery banner shown at the top of the
+/// dashboard. View-only in every state: it informs, never blocks reads.
+class _LicenseStatusBanner extends StatelessWidget {
+  const _LicenseStatusBanner({required this.access});
+
+  final LicenseAccessState? access;
+
+  @override
+  Widget build(BuildContext context) {
+    if (access == null) return const SizedBox.shrink();
+
+    switch (access!.status) {
+      case LicenseAccessStatus.trial:
+        final days = access!.daysRemaining;
+        return _banner(
+          context,
+          color: AppColors.primaryTeal,
+          icon: Icons.hourglass_top_outlined,
+          message: context.tr(
+            'Trial: $days day${days == 1 ? '' : 's'} left. Activate any time to keep selling.',
+            'ሙከራ፦ $days ቀናት ቀርተዋል። ለመሽየጭ መቀጠል በየትኛውም ጊዜ ፈቃድ ያንቁ።',
+          ),
+        );
+      case LicenseAccessStatus.licensed:
+        if (access!.isLifetime || !access!.isExpiringSoon) {
+          return const SizedBox.shrink();
+        }
+        final days = access!.daysRemaining;
+        return _banner(
+          context,
+          color: AppColors.alertAmber,
+          icon: Icons.schedule_outlined,
+          message: context.tr(
+            'License expires in $days day${days == 1 ? '' : 's'}. Renew to keep recording sales.',
+            'ፈቃዱ በ$days ቀናት ውስጥ ያበቃል። ሽያጭዎን ለመቀጠል ያድሱት።',
+          ),
+        );
+      case LicenseAccessStatus.expired:
+      case LicenseAccessStatus.trialExpired:
+        return _banner(
+          context,
+          color: AppColors.alertAmber,
+          icon: Icons.lock_outline,
+          message: access!.clockRollbackSuspected
+              ? context.tr(
+                  'Set the correct device date and time to use Efoy again.',
+                  'እፎይን እንደገና ለመጠቀም ትክክለኛውን ቀንና ሰዓት ያስተካክሉ።',
+                )
+              : context.tr(
+                  'Read-only mode. Pay with Telebirr to '
+                      '${AppStrings.supportPhone} (${AppStrings.supportTeam}) '
+                      'and enter the activation key in Profile to record sales '
+                      'again. Your records stay available for viewing and '
+                      'export.',
+                  'ለማንባት ብቻ ሁነታ። ሽያጭ ለመመዝገብ በቴሌብር '
+                      '${AppStrings.supportPhone} '
+                      '(${AppStrings.supportTeam}) ክፈሉና በመገለጫው ውስጥ የማንቂያ '
+                      'ኮዱን ያስገቡ። መዛግብቶችዎ ለመመልከትና ለማውጣት ይገኛሉ።',
+                ),
+        );
+      case LicenseAccessStatus.blocked:
+        return _banner(
+          context,
+          color: AppColors.alertRed,
+          icon: Icons.security_outlined,
+          message: context.tr(
+            'Secure storage is unavailable. Restart the device or contact '
+                'support. Your business data is safe.',
+            'የደህንነት ማከማቻ አይገኝም። መሣሪያውን እንደገና ያስኩሩ ወይም '
+                'ድጋፍ ይጠይቁ። የንግድ መረጃዎ ደህና ነው።',
+          ),
+        );
+    }
+  }
+
+  Widget _banner(
+    BuildContext context, {
+    required Color color,
+    required IconData icon,
+    required String message,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppTheme.spaceL,
+        AppTheme.spaceM,
+        AppTheme.spaceL,
+        0,
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  height: 1.4,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? color.withValues(alpha: 0.95)
+                      : color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _MetricCard extends StatelessWidget {
   const _MetricCard({
     required this.icon,
@@ -471,9 +570,7 @@ class _EmptyActivityCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [

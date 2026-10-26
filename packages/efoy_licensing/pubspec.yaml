@@ -1,0 +1,14 @@
+name: efoy_licensing
+description: >-
+  Offline signed licensing domain shared by the Efoy Flutter app and the
+  operator-side license issuer. Contains the versioned license payload,
+  activation-code codec and Ed25519 verification. Signing code intentionally
+  lives only in the issuer tool, never in the distributed app.
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  cryptography: ^2.7.0

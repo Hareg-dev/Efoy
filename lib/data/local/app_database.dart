@@ -20,13 +20,18 @@ class AppDatabase {
     return _instance!;
   }
 
-  /// Initialize the Isar database
-  Future<Isar> init() async {
+  /// Initialize the Isar database.
+  ///
+  /// [directory] and [name] exist so integration tests can open the real
+  /// database in a temporary directory without platform channels; production
+  /// call sites never pass them.
+  Future<Isar> init({String? directory, String? name}) async {
     if (_isar != null && _isar!.isOpen) {
       return _isar!;
     }
 
-    final dir = await getApplicationDocumentsDirectory();
+    final dirPath =
+        directory ?? (await getApplicationDocumentsDirectory()).path;
 
     _isar = await Isar.open(
       [
@@ -38,8 +43,8 @@ class AppDatabase {
         UserProfileSchema,
         HeldOrderModelSchema,
       ],
-      directory: dir.path,
-      name: 'efoy_retail_db',
+      directory: dirPath,
+      name: name ?? 'efoy_retail_db',
     );
 
     return _isar!;

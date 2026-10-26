@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 
+import '../../core/licensing/license_gate.dart';
 import '../../logic/calculators/wac_calculator.dart';
 import '../models/expense_model.dart';
 import '../models/product_model.dart';
@@ -22,9 +23,12 @@ class RestockResult {
 }
 
 class ProductRepository implements BaseRepository<ProductModel> {
-  ProductRepository(this._isar);
+  ProductRepository(this._isar, this._licenseGate);
 
   final Isar _isar;
+
+  /// Enforces the offline licensing policy before product mutations.
+  final LicenseGate _licenseGate;
 
   Isar get isar => _isar;
 
@@ -53,13 +57,14 @@ class ProductRepository implements BaseRepository<ProductModel> {
   Future<List<ProductModel>> getLowStockProducts() async {
     final products = await getAll();
     return products
-        .where((product) => product.currentStock <= product.lowStockThreshold)
+        .where((product) => product.needsRestock)
         .toList()
       ..sort((a, b) => a.currentStock.compareTo(b.currentStock));
   }
 
   @override
   Future<ProductModel> create(ProductModel entity) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.manageProducts);
     entity
       ..createdAt = entity.createdAt
       ..updatedAt = DateTime.now();
@@ -71,6 +76,7 @@ class ProductRepository implements BaseRepository<ProductModel> {
 
   @override
   Future<ProductModel> update(ProductModel entity) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.manageProducts);
     entity.updatedAt = DateTime.now();
     await _isar.writeTxn(() async {
       await _isar.productModels.put(entity);
@@ -81,6 +87,7 @@ class ProductRepository implements BaseRepository<ProductModel> {
   /// Soft-delete a product so historical sale line items stay resolvable.
   @override
   Future<void> delete(int id) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.manageProducts);
     await _isar.writeTxn(() async {
       final product = await _isar.productModels.get(id);
       if (product == null) return;
@@ -104,6 +111,7 @@ class ProductRepository implements BaseRepository<ProductModel> {
     String? supplierName,
     String? notes,
   }) async {
+    await _licenseGate.ensureAllowed(LicensedOperation.restock);
     if (quantityAdded <= 0) {
       throw RepositoryException('Quantity added must be greater than zero.');
     }

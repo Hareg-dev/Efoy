@@ -3,16 +3,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/product_repository.dart';
+import '../../logic/calculators/inventory_valuation.dart';
 import '../../logic/providers/inventory_provider.dart';
 import '../../logic/providers/repository_providers.dart';
 import '../animations/pill_transition.dart';
 import '../animations/pulsing_dot.dart';
 import '../widgets/restock_modal.dart';
+import '../widgets/screen_header.dart';
 
 class InventoryScreen extends ConsumerStatefulWidget {
   const InventoryScreen({super.key});
@@ -36,6 +39,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     final scheme = theme.colorScheme;
     final inventory = ref.watch(inventoryProvider);
     final notifier = ref.read(inventoryProvider.notifier);
+    final valuation = ref.watch(inventoryValuationProvider);
     final products = inventory.products;
     final hasQuery = inventory.searchQuery.trim().isNotEmpty;
 
@@ -52,9 +56,16 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 0,
               ),
               sliver: SliverToBoxAdapter(
-                child: _Header(
-                  productCount: inventory.activeCount,
-                  onAdd: () => _openProductForm(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Header(
+                      productCount: inventory.activeCount,
+                      onAdd: () => _openProductForm(),
+                    ),
+                    const SizedBox(height: AppTheme.spaceM),
+                    _StockValueCard(valuation: valuation),
+                  ],
                 ),
               ),
             ),
@@ -69,15 +80,15 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (inventory.lowStockCount > 0) ...[
+                    if (inventory.needsRestockCount > 0) ...[
                       _LowStockCard(
-                        products: inventory.lowStockProducts,
+                        products: inventory.needsRestockProducts,
                         onProductTap: _openProductDetail,
                         onViewAll: () {
                           _searchController.clear();
                           notifier
                             ..setSearchQuery('')
-                            ..setFilter(StockFilter.lowStock);
+                            ..setFilter(StockFilter.needsRestock);
                         },
                       ),
                       const SizedBox(height: AppTheme.spaceM),
@@ -104,8 +115,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                             : null,
                         filled: true,
                         fillColor: theme.brightness == Brightness.dark
-                            ? scheme.surfaceContainerHighest
-                                .withValues(alpha: 0.35)
+                            ? scheme.surfaceContainerHighest.withValues(
+                                alpha: 0.35,
+                              )
                             : Colors.white,
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
@@ -113,15 +125,17 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                           vertical: 14,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusMedium),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMedium,
+                          ),
                           borderSide: BorderSide(
                             color: scheme.outlineVariant.withValues(alpha: 0.5),
                           ),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusMedium),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusMedium,
+                          ),
                           borderSide: BorderSide(
                             color: scheme.outlineVariant.withValues(alpha: 0.5),
                           ),
@@ -212,9 +226,9 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     _showMessage(
       context.tr(
         'Restocked ${result.log.quantityAdded} units · new WAC '
-        '${CurrencyFormatter.formatBirr(result.product.costPrice)}',
+            '${CurrencyFormatter.formatBirr(result.product.costPrice)}',
         '${result.log.quantityAdded} አሃድ ተጨምሯል · አዲስ አማካይ ወጪ '
-        '${CurrencyFormatter.formatBirr(result.product.costPrice)}',
+            '${CurrencyFormatter.formatBirr(result.product.costPrice)}',
       ),
     );
   }
@@ -240,7 +254,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         content: Text(
           context.tr(
             '"${product.name}" will be removed from inventory. Past sales '
-            'history stays intact.',
+                'history stays intact.',
             '"${product.name}" ከክምችት ይወገዳል። ያለፈው የሽያጭ ታሪክ አይጠፋም።',
           ),
         ),
@@ -295,56 +309,179 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return ScreenHeader(
+      title: context.tr('INVENTORY', 'ክምችት'),
+      subtitle: context.tr(
+        '$productCount products tracked',
+        '$productCount እቃዎች በክትትል ላይ',
+      ),
+      actions: [
+        HeaderActionButton(label: context.tr('Add', 'ጨምር'), onPressed: onAdd),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Whole-stock value
+// ---------------------------------------------------------------------------
+
+/// The three numbers that decide a purchase order: how many units are on the
+/// shelves, what they cost, and what they would fetch if all of it sold.
+/// Same [InventoryValuation] the Excel report writes, so the two agree.
+class _StockValueCard extends StatelessWidget {
+  const _StockValueCard({required this.valuation});
+
+  final InventoryValuation valuation;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : AppColors.tealTint,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.45),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
+              Icon(Icons.pie_chart_outline, size: 15, color: scheme.primary),
+              const SizedBox(width: 6),
               Text(
-                context.tr('INVENTORY', 'ክምችት'),
+                context.tr('STOCK AT A GLANCE', 'ክምችት በአጭሩ'),
                 style: TextStyle(
-                  fontSize: 28,
-                  height: 1.1,
+                  fontSize: 10.5,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: -0.5,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                context.tr(
-                  '$productCount products tracked',
-                  '$productCount እቃዎች በክትትል ላይ',
-                ),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: scheme.onSurfaceVariant,
+                  letterSpacing: 0.7,
+                  color: scheme.primary,
                 ),
               ),
             ],
           ),
-        ),
-        FilledButton.icon(
-          onPressed: onAdd,
-          style: FilledButton.styleFrom(
-            backgroundColor: scheme.primary,
-            foregroundColor: scheme.onPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _ValueCell(
+                  label: context.tr('Units in stock', 'ያሉ አሃዶች'),
+                  value: '${valuation.stockUnits}',
+                  note: context.tr(
+                    '${valuation.productCount} products',
+                    '${valuation.productCount} እቃዎች',
+                  ),
+                ),
+              ),
+              _CellDivider(isDark: isDark),
+              Expanded(
+                child: _ValueCell(
+                  label: context.tr('Cost value', 'የወጪ ዋጋ'),
+                  value: CurrencyFormatter.formatBirrWhole(valuation.costValue),
+                  note: context.tr('money in goods', 'በእቃ የተያዘ ገንዘብ'),
+                ),
+              ),
+              _CellDivider(isDark: isDark),
+              Expanded(
+                child: _ValueCell(
+                  label: context.tr('Liquidity value', 'የመሸጫ ዋጋ'),
+                  value: CurrencyFormatter.formatBirrWhole(
+                    valuation.retailValue,
+                  ),
+                  note: context.tr('if all sold', 'ሁሉም ተሸጦ'),
+                  accent: AppColors.successGreen,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CellDivider extends StatelessWidget {
+  const _CellDivider({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 1,
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      color: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.5),
+    );
+  }
+}
+
+class _ValueCell extends StatelessWidget {
+  const _ValueCell({
+    required this.label,
+    required this.value,
+    required this.note,
+    this.accent,
+  });
+
+  final String label;
+  final String value;
+  final String note;
+  final Color? accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurfaceVariant,
             ),
           ),
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(
-            context.tr('Add', 'ጨምር'),
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.3,
+                color: accent ?? scheme.onSurface,
+              ),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            note,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 9.5, color: scheme.onSurfaceVariant),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -372,6 +509,8 @@ class _LowStockCard extends StatelessWidget {
     const accent = AppColors.alertAmber;
     final visible = products.take(4).toList();
     final remaining = products.length - visible.length;
+    final soldOut = products.where((product) => product.isOutOfStock).length;
+    final runningLow = products.length - soldOut;
 
     return Container(
       width: double.infinity,
@@ -394,17 +533,18 @@ class _LowStockCard extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  context.tr('Low stock alert', 'ዝቅተኛ ክምችት ማስጠንቀቂያ'),
+                  context.tr('Restock soon', 'በቅርቡ ይሙሉ'),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? AppColors.textOnDark : AppColors.textPrimary,
+                    color: isDark
+                        ? AppColors.textOnDark
+                        : AppColors.textPrimary,
                   ),
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(999),
@@ -425,13 +565,18 @@ class _LowStockCard extends StatelessWidget {
             padding: const EdgeInsets.only(left: 16),
             child: Text(
               context.tr(
-                '${products.length} products at or below their threshold',
-                '${products.length} እቃዎች ከተቀመጠው መጠን በታች ናቸው',
+                runningLow == 0
+                    ? '$soldOut products are sold out'
+                    : soldOut == 0
+                    ? '$runningLow products are running low'
+                    : '$runningLow running low · $soldOut sold out',
+                runningLow == 0
+                    ? '$soldOut እቃዎች አልቅተዋል'
+                    : soldOut == 0
+                    ? '$runningLow እቃዎች ክምችታቸው እየወረደ ነው'
+                    : '$runningLow እየወረደ · $soldOut አልቅተዋል',
               ),
-              style: TextStyle(
-                fontSize: 11,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: 8),
@@ -440,18 +585,17 @@ class _LowStockCard extends StatelessWidget {
               onTap: () => onProductTap(product),
               borderRadius: BorderRadius.circular(8),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
                         product.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
+                          height: 1.25,
                           color: scheme.onSurface,
                         ),
                       ),
@@ -493,8 +637,8 @@ class _LowStockCard extends StatelessWidget {
                 ),
                 child: Text(
                   context.tr(
-                    'View all $remaining low-stock items',
-                    'ሁሉንም $remaining ዝቅተኛ ክምችቶች ይመልከቱ',
+                    'View all $remaining items',
+                    'ሁሉንም $remaining እቃዎች ይመልከቱ',
                   ),
                   style: const TextStyle(
                     fontSize: 11,
@@ -527,10 +671,10 @@ class _FilterRow extends StatelessWidget {
 
     final counts = {
       StockFilter.all: inventory.activeCount,
-      StockFilter.inStock:
-          inventory.allProducts.where((p) => p.currentStock > 0).length,
-      StockFilter.lowStock:
-          inventory.allProducts.where((p) => p.isLowStock).length,
+      StockFilter.inStock: inventory.allProducts
+          .where((p) => p.currentStock > 0)
+          .length,
+      StockFilter.needsRestock: inventory.needsRestockCount,
       StockFilter.outOfStock: inventory.outOfStockCount,
     };
 
@@ -541,8 +685,8 @@ class _FilterRow extends StatelessWidget {
           name = context.tr('All', 'ሁሉም');
         case StockFilter.inStock:
           name = context.tr('In Stock', 'በክምችት');
-        case StockFilter.lowStock:
-          name = context.tr('Low Stock', 'ዝቅተኛ');
+        case StockFilter.needsRestock:
+          name = context.tr('Restock', 'ይሙሉ');
         case StockFilter.outOfStock:
           name = context.tr('Out', 'ውጪ');
       }
@@ -561,8 +705,9 @@ class _FilterRow extends StatelessWidget {
             selected: inventory.filter == filter,
             selectedColor: scheme.primary,
             selectedForeground: scheme.onPrimary,
-            unselectedColor:
-                isDark ? Colors.white.withValues(alpha: 0.06) : Colors.white,
+            unselectedColor: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : Colors.white,
             unselectedForeground: scheme.onSurfaceVariant,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             onTap: () => onSelected(filter),
@@ -601,7 +746,9 @@ class _ProductTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             border: Border.all(
-              color: scheme.outlineVariant.withValues(alpha: isDark ? 0.25 : 0.5),
+              color: scheme.outlineVariant.withValues(
+                alpha: isDark ? 0.25 : 0.5,
+              ),
             ),
           ),
           child: Row(
@@ -628,19 +775,19 @@ class _ProductTile extends StatelessWidget {
                   children: [
                     Text(
                       product.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
+                        height: 1.25,
                         color: scheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      product.category ??
-                          product.barcode ??
-                          context.tr('Uncategorized', 'ምድብ የለውም'),
+                      product.category == null
+                          ? product.barcode ??
+                                context.tr('Uncategorized', 'ምድብ የለውም')
+                          : context.categoryLabel(product.category!),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -797,10 +944,7 @@ class _EmptyProducts extends StatelessWidget {
                       'ክምችት መከታተል ለመጀመር የመጀመሪያውን እቃ ይጨምሩ።',
                     ),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: AppTheme.spaceM),
             if (hasQuery)
@@ -905,7 +1049,9 @@ class _ProductDetailSheet extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             [
-                              if (product.category != null) product.category!,
+                              if (product.category != null &&
+                                  product.category!.isNotEmpty)
+                                context.categoryLabel(product.category!),
                               if (product.barcode != null) product.barcode!,
                             ].join(' · '),
                             style: TextStyle(
@@ -1028,8 +1174,9 @@ class _ProductDetailSheet extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusSmall),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusSmall,
+                        ),
                       ),
                     ),
                     icon: const Icon(Icons.add_box_outlined, size: 20),
@@ -1053,8 +1200,9 @@ class _ProductDetailSheet extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppTheme.radiusSmall),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSmall,
+                            ),
                           ),
                         ),
                         icon: const Icon(Icons.edit_outlined, size: 18),
@@ -1073,8 +1221,9 @@ class _ProductDetailSheet extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppTheme.radiusSmall),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radiusSmall,
+                            ),
                           ),
                         ),
                         icon: const Icon(Icons.delete_outline, size: 18),
@@ -1114,9 +1263,7 @@ class _MetricTile extends StatelessWidget {
             ? Colors.white.withValues(alpha: 0.05)
             : scheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1172,10 +1319,7 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                fontSize: 12,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
           ),
           Text(
@@ -1209,15 +1353,32 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
   late final TextEditingController _name;
   late final TextEditingController _description;
   late final TextEditingController _barcode;
-  late final TextEditingController _category;
   late final TextEditingController _sellingPrice;
   late final TextEditingController _costPrice;
   late final TextEditingController _stock;
   late final TextEditingController _threshold;
+  String? _category;
   bool _saving = false;
   String? _error;
 
   bool get _isEditing => widget.product != null;
+
+  /// Picker options: categories already in use, then the suggested list.
+  List<String> get _categoryOptions {
+    final inUse = ref
+        .read(inventoryProvider)
+        .allProducts
+        .map((product) => product.category)
+        .whereType<String>()
+        .where((category) => category.trim().isNotEmpty)
+        .toSet();
+    final current = widget.product?.category?.trim();
+    if (current != null && current.isNotEmpty) inUse.add(current);
+    final suggestions = AppStrings.productCategories.where(
+      (category) => !inUse.contains(category),
+    );
+    return [...inUse.toList()..sort(), ...suggestions];
+  }
 
   @override
   void initState() {
@@ -1231,7 +1392,7 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
     _name = TextEditingController(text: product?.name ?? '');
     _description = TextEditingController(text: product?.description ?? '');
     _barcode = TextEditingController(text: product?.barcode ?? '');
-    _category = TextEditingController(text: product?.category ?? '');
+    _category = product?.category?.trim();
     _sellingPrice = TextEditingController(
       text: product == null ? '' : number(product.sellingPrice),
     );
@@ -1251,7 +1412,6 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
     _name.dispose();
     _description.dispose();
     _barcode.dispose();
-    _category.dispose();
     _sellingPrice.dispose();
     _costPrice.dispose();
     _stock.dispose();
@@ -1275,25 +1435,25 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
 
     final error = switch (null) {
       _ when name.isEmpty => context.tr(
-          'Product name is required.',
-          'የእቃው ስም ያስፈልጋል።',
-        ),
+        'Product name is required.',
+        'የእቃው ስም ያስፈልጋል።',
+      ),
       _ when selling == null || selling <= 0 => context.tr(
-          'Enter a valid selling price.',
-          'ትክክለኛ የመሸጫ ዋጋ ያስገቡ።',
-        ),
+        'Enter a valid selling price.',
+        'ትክክለኛ የመሸጫ ዋጋ ያስገቡ።',
+      ),
       _ when cost == null || cost < 0 => context.tr(
-          'Enter a valid cost price.',
-          'ትክክለኛ የወጪ ዋጋ ያስገቡ።',
-        ),
+        'Enter a valid cost price.',
+        'ትክክለኛ የወጪ ዋጋ ያስገቡ።',
+      ),
       _ when stock == null || stock < 0 => context.tr(
-          'Stock cannot be negative.',
-          'ክምችት አሉታዊ መሆን አይችልም።',
-        ),
+        'Stock cannot be negative.',
+        'ክምችት አሉታዊ መሆን አይችልም።',
+      ),
       _ when threshold == null || threshold < 0 => context.tr(
-          'Low stock threshold cannot be negative.',
-          'ዝቅተኛ ክምችት መጠን አሉታዊ መሆን አይችልም።',
-        ),
+        'Low stock threshold cannot be negative.',
+        'ዝቅተኛ ክምችት መጠን አሉታዊ መሆን አይችልም።',
+      ),
       _ => null,
     };
     if (error != null) {
@@ -1313,7 +1473,7 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
         name: name,
         description: _emptyToNull(_description.text),
         barcode: _emptyToNull(_barcode.text),
-        category: _emptyToNull(_category.text),
+        category: _category,
         sellingPrice: selling!,
         costPrice: cost!,
         currentStock: stock!,
@@ -1374,9 +1534,10 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
         onChanged: (_) {
           if (_error != null) setState(() => _error = null);
         },
-        decoration: decoration(label, prefix: prefix).copyWith(
-          prefixIcon: icon == null ? null : Icon(icon, size: 18),
-        ),
+        decoration: decoration(
+          label,
+          prefix: prefix,
+        ).copyWith(prefixIcon: icon == null ? null : Icon(icon, size: 18)),
       );
     }
 
@@ -1422,10 +1583,38 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: field(
-                      controller: _category,
-                      label: context.tr('Category', 'ምድብ'),
-                      icon: Icons.category_outlined,
+                    child: DropdownButtonFormField<String?>(
+                      initialValue: _category,
+                      isExpanded: true,
+                      decoration:
+                          decoration(
+                            context.tr('Category (optional)', 'ምድብ (አማራጭ)'),
+                          ).copyWith(
+                            prefixIcon: const Icon(
+                              Icons.category_outlined,
+                              size: 18,
+                            ),
+                          ),
+                      items: [
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text(
+                            context.tr('No category', 'ምድብ የለውም'),
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        for (final category in _categoryOptions)
+                          DropdownMenuItem<String?>(
+                            value: category,
+                            child: Text(
+                              context.categoryLabel(category),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                      ],
+                      onChanged: (value) => setState(() => _category = value),
                     ),
                   ),
                 ],
@@ -1467,9 +1656,7 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
                       label: context.tr('Current stock', 'የአሁኑ ክምችት'),
                       icon: Icons.inventory_2_outlined,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1479,9 +1666,7 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
                       label: context.tr('Low stock alert at', 'ዝቅተኛ ማስጠንቀቂያ'),
                       icon: Icons.notifications_active_outlined,
                       keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                 ],
@@ -1491,7 +1676,7 @@ class _ProductFormDialogState extends ConsumerState<_ProductFormDialog> {
                 Text(
                   context.tr(
                     'Tip: use Restock to change stock or cost so the WAC and '
-                    'expense log stay accurate.',
+                        'expense log stay accurate.',
                     'ማስታወሻ፦ ክምችት ወይም ወጪ ለመቀየር Restock ይጠቀሙ።',
                   ),
                   style: TextStyle(

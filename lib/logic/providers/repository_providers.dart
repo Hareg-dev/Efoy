@@ -11,26 +11,31 @@ import '../../data/repositories/product_repository.dart';
 import '../../data/repositories/sale_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import 'database_provider.dart';
+import 'license_provider.dart';
 
 final productRepositoryProvider = FutureProvider<ProductRepository>((ref) async {
   final isar = await ref.watch(databaseProvider.future);
-  return ProductRepository(isar);
+  final gate = await ref.watch(licenseGateProvider.future);
+  return ProductRepository(isar, gate);
 });
 
 final saleRepositoryProvider = FutureProvider<SaleRepository>((ref) async {
   final isar = await ref.watch(databaseProvider.future);
-  return SaleRepository(isar);
+  final gate = await ref.watch(licenseGateProvider.future);
+  return SaleRepository(isar, gate);
 });
 
 final expenseRepositoryProvider = FutureProvider<ExpenseRepository>((ref) async {
   final isar = await ref.watch(databaseProvider.future);
-  return ExpenseRepository(isar);
+  final gate = await ref.watch(licenseGateProvider.future);
+  return ExpenseRepository(isar, gate);
 });
 
 final heldOrderRepositoryProvider =
     FutureProvider<HeldOrderRepository>((ref) async {
   final isar = await ref.watch(databaseProvider.future);
-  return HeldOrderRepository(isar);
+  final gate = await ref.watch(licenseGateProvider.future);
+  return HeldOrderRepository(isar, gate);
 });
 
 final userRepositoryProvider = FutureProvider<UserRepository>((ref) async {

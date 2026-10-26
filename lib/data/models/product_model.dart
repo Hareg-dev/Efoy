@@ -17,7 +17,7 @@ class ProductModel {
   // Financial fields
   late double sellingPrice; // Retail price per unit
   late double costPrice; // Weighted Average Cost (WAC)
-  
+
   // Stock management
   late int currentStock;
   late int lowStockThreshold;
@@ -52,14 +52,17 @@ class ProductModel {
   // Computed properties
   bool get isLowStock => currentStock <= lowStockThreshold && currentStock > 0;
   bool get isOutOfStock => currentStock <= 0;
-  
+
+  /// The single "put this on the order list" rule every screen uses, so the
+  /// home alerts, the inventory card and the filter pills never disagree.
+  bool get needsRestock => currentStock <= lowStockThreshold;
+
   double get liquidityValue => currentStock * sellingPrice;
   double get inventoryValue => currentStock * costPrice;
-  
+
   double get potentialProfit => liquidityValue - inventoryValue;
-  double get profitMargin => sellingPrice > 0 
-      ? (sellingPrice - costPrice) / sellingPrice 
-      : 0;
+  double get profitMargin =>
+      sellingPrice > 0 ? (sellingPrice - costPrice) / sellingPrice : 0;
 
   // Copy with method for updates
   ProductModel copyWith({
@@ -120,8 +123,12 @@ class ProductModel {
       lowStockThreshold: json['lowStockThreshold'] as int? ?? 10,
       category: json['category'] as String?,
       imageUrl: json['imageUrl'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
-      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt'] as String) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'] as String)
+          : DateTime.now(),
       isDeleted: json['isDeleted'] as bool? ?? false,
     )..id = json['id'] as int;
   }
