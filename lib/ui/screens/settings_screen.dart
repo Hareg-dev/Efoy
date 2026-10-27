@@ -265,8 +265,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _setTheme(ThemeMode mode) {
-    ref.read(themeModeProvider.notifier).setThemeMode(mode);
+  Future<void> _setTheme(ThemeMode mode) async {
+    try {
+      await ref.read(themeModeProvider.notifier).setThemeMode(mode);
+    } on Object catch (_) {
+      // The screen already flipped to the new mode; without the write the next
+      // cold start comes back in the old one, so say so instead of lying.
+      if (!mounted) return;
+      _showSnack(
+        context.tr(
+          'This choice could not be saved - the app may open in the old theme.',
+          'ይህ ምርጫ ማስቀመጥ አልተቻለም - መተግበሪያው በድሮው ውስብስብ ሊከፈት ይችላል።',
+        ),
+        isError: true,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------

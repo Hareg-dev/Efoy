@@ -19,14 +19,20 @@ class UserProfile {
   /// documents folder when picked. Null means the default store icon.
   String? profilePhotoPath;
 
-  // Payment Information (for receiving payments from customers)
+  /// Payment details the merchant used to be asked for at sign-up. The app
+  /// never collects or shows them now - the customer pays the Efoy team, not
+  /// the other way round - but the columns stay so existing rows keep their
+  /// property layout.
   String? phoneNumber;
   String? telebirrAccount;
   String? bankAccount;
   String? bankName;
 
-  // App Settings
+  /// Legacy demo/production flag, no longer read by anything.
   bool isDemoMode;
+
+  /// Legacy copy of the theme choice. [ThemeModeNotifier] and secure storage
+  /// are the only source of truth for light/dark.
   bool isDarkMode;
   String language; // 'en' or 'am'
 

@@ -84,13 +84,6 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreenBody> {
                     : () => _choosePhoto(profile),
               ),
               const SizedBox(height: AppTheme.spaceM),
-              _PaymentCard(
-                profile: profile,
-                onEdit: profile == null
-                    ? null
-                    : () => _openPaymentForm(profile),
-              ),
-              const SizedBox(height: AppTheme.spaceM),
               SettingsCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,11 +122,8 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreenBody> {
                 onCopyInstallationId: _copyInstallationId,
                 onReactivate: _openReactivation,
               ),
-              if (licenseAccess != null &&
-                  !licenseAccess.canPerformPaidOperations) ...[
-                const SizedBox(height: AppTheme.spaceM),
-                const _SupportCard(),
-              ],
+              const SizedBox(height: AppTheme.spaceM),
+              const _SupportCard(),
               const SizedBox(height: AppTheme.spaceL),
               SizedBox(
                 width: double.infinity,
@@ -285,16 +275,6 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreenBody> {
     _showSnack(context.tr('Profile updated', 'መገለጫ ተስተካክሏል'));
   }
 
-  Future<void> _openPaymentForm(UserProfile profile) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) =>
-          _english(dialogContext, _PaymentFormDialog(profile: profile)),
-    );
-    if (!mounted || saved != true) return;
-    _showSnack(context.tr('Payment details updated', 'የክፍያ ዝርዝር ተስተካክሏል'));
-  }
-
   Future<void> _openChangePassword(UserProfile profile) async {
     final changed = await showDialog<bool>(
       context: context,
@@ -433,8 +413,6 @@ class _ProfileCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    _ModeBadge(isDemo: profile?.isDemoMode ?? true),
                   ],
                 ),
                 if (hasBusiness && hasOwner) ...[
@@ -563,193 +541,6 @@ class _PhotoAvatar extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ModeBadge extends StatelessWidget {
-  const _ModeBadge({required this.isDemo});
-
-  final bool isDemo;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isDemo ? AppColors.alertAmber : AppColors.successGreen;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        isDemo ? 'Demo' : context.tr('Production', 'ምርት'),
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Payment card
-// ---------------------------------------------------------------------------
-
-class _PaymentCard extends StatelessWidget {
-  const _PaymentCard({required this.profile, required this.onEdit});
-
-  final UserProfile? profile;
-  final VoidCallback? onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final phone = profile?.phoneNumber;
-    final telebirr = profile?.telebirrAccount;
-    final bank = profile?.bankAccount;
-    final bankName = profile?.bankName;
-    final hasAny = [
-      phone,
-      telebirr,
-      bank,
-    ].any((value) => value != null && value.isNotEmpty);
-
-    return SettingsCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: SettingsSectionTitle(
-                  context.tr('Payment details', 'የክፍያ ዝርዝር'),
-                ),
-              ),
-              if (onEdit != null)
-                TextButton(
-                  onPressed: onEdit,
-                  child: Text(
-                    hasAny
-                        ? context.tr('Edit', 'አስተካክል')
-                        : context.tr('Add', 'ጨምር'),
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (!hasAny)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    size: 18,
-                    color: scheme.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      context.tr(
-                        'No payment information yet. Add your phone, Telebirr '
-                            'or bank account.',
-                        'እስካሁን የክፍያ መረጃ የለም። ስልክ፣ ቴሌብር ወይም የባንክ ሂሳብ ያክሉ።',
-                      ),
-                      style: TextStyle(
-                        fontSize: 11,
-                        height: 1.4,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else ...[
-            _PaymentRow(
-              icon: Icons.phone_outlined,
-              label: context.tr('Phone', 'ስልክ'),
-              value: _displayValue(context, phone),
-            ),
-            const SizedBox(height: 10),
-            _PaymentRow(
-              icon: Icons.wallet_outlined,
-              label: 'Telebirr',
-              value: _displayValue(context, telebirr),
-            ),
-            const SizedBox(height: 10),
-            _PaymentRow(
-              icon: Icons.account_balance_outlined,
-              label: context.tr('Bank', 'ባንክ'),
-              value: bank == null || bank.isEmpty
-                  ? context.tr('Not set', 'አልተዘጋጀም')
-                  : bankName == null || bankName.isEmpty
-                  ? bank
-                  : '$bankName · $bank',
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _displayValue(BuildContext context, String? value) {
-    if (value == null || value.isEmpty) {
-      return context.tr('Not set', 'አልተዘጋጀም');
-    }
-    return value;
-  }
-}
-
-class _PaymentRow extends StatelessWidget {
-  const _PaymentRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 17, color: scheme.primary),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: scheme.onSurface,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1033,16 +824,12 @@ class _LicenseRow extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Edit profile dialog
-// ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
 // Support
 // ---------------------------------------------------------------------------
 
-/// Appears the moment the trial or a licence stops covering paid operations:
-/// one number reaches the team, takes the Telebirr payment and returns the
-/// activation key.
+/// Always visible, whatever the licence state: a trial that is still running
+/// needs the same line for a question or a renewal, and hiding it until
+/// something expires left merchants hunting for a number on their own.
 class _SupportCard extends StatelessWidget {
   const _SupportCard();
 
@@ -1054,14 +841,15 @@ class _SupportCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SettingsSectionTitle('Need help or a licence?'),
+          SettingsSectionTitle('Customer support'),
           const SizedBox(height: 6),
           Text(
-            'Copy the Installation ID above and send it to '
-            '${AppStrings.supportTeam} on ${AppStrings.supportPhone}. Pay '
-            'through Telebirr to the same number and the activation key comes '
-            'straight back. Sales, inventory and expenses you already '
-            'recorded stay available.',
+            'Reach the Efoy team on Telegram at '
+            '${AppStrings.supportTelegram} or call either number below. '
+            '${AppStrings.supportPhone} is also the Telebirr account for a '
+            'licence: copy the Installation ID above, pay it, and the '
+            'activation key comes straight back. Nothing you already '
+            'recorded is deleted while a licence is expired.',
             style: TextStyle(
               fontSize: 11.5,
               height: 1.5,
@@ -1070,14 +858,26 @@ class _SupportCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _SupportRow(
-            icon: Icons.account_balance_wallet_outlined,
-            label: 'Telebirr account',
+            icon: Icons.send_outlined,
+            label: 'Telegram',
+            value: AppStrings.supportTelegram,
+          ),
+          const SizedBox(height: 8),
+          _SupportRow(
+            icon: Icons.phone_outlined,
+            label: 'Call or SMS',
             value: AppStrings.supportPhone,
           ),
           const SizedBox(height: 8),
           _SupportRow(
-            icon: Icons.chat_bubble_outline,
-            label: 'Call or SMS support',
+            icon: Icons.phone_outlined,
+            label: 'Call or SMS',
+            value: AppStrings.supportPhoneAlt,
+          ),
+          const SizedBox(height: 8),
+          _SupportRow(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Telebirr account',
             value: '${AppStrings.supportPhone} · ${AppStrings.supportTeam}',
           ),
         ],
@@ -1306,206 +1106,6 @@ class _ProfileFormDialogState extends ConsumerState<_ProfileFormDialog> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Edit payment dialog
-// ---------------------------------------------------------------------------
-
-class _PaymentFormDialog extends ConsumerStatefulWidget {
-  const _PaymentFormDialog({required this.profile});
-
-  final UserProfile profile;
-
-  @override
-  ConsumerState<_PaymentFormDialog> createState() => _PaymentFormDialogState();
-}
-
-class _PaymentFormDialogState extends ConsumerState<_PaymentFormDialog> {
-  late final TextEditingController _phone;
-  late final TextEditingController _telebirr;
-  late final TextEditingController _bankName;
-  late final TextEditingController _bankAccount;
-  bool _saving = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _phone = TextEditingController(text: widget.profile.phoneNumber ?? '');
-    _telebirr = TextEditingController(
-      text: widget.profile.telebirrAccount ?? '',
-    );
-    _bankName = TextEditingController(text: widget.profile.bankName ?? '');
-    _bankAccount = TextEditingController(
-      text: widget.profile.bankAccount ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _phone.dispose();
-    _telebirr.dispose();
-    _bankName.dispose();
-    _bankAccount.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final phone = _phone.text.trim();
-    final telebirr = _telebirr.text.trim();
-    final bankName = _bankName.text.trim();
-    final bankAccount = _bankAccount.text.trim();
-
-    String? error;
-    if (!widget.profile.isDemoMode) {
-      if (phone.isEmpty) {
-        error = context.tr(
-          'Phone number is required in production mode.',
-          'በምርት ሁነታ የስልክ ቁጥር ያስፈልጋል።',
-        );
-      } else if (telebirr.isEmpty && bankAccount.isEmpty) {
-        error = context.tr(
-          'Add a Telebirr or bank account.',
-          'ቴሌብር ወይም የባንክ ሂሳብ ያክሉ።',
-        );
-      } else if (bankAccount.isNotEmpty && bankName.isEmpty) {
-        error = context.tr(
-          'Bank name is required when a bank account is set.',
-          'የባንክ ሂሳብ ሲኖር የባንክ ስም ያስፈልጋል።',
-        );
-      }
-    }
-    if (error != null) {
-      setState(() => _error = error);
-      return;
-    }
-
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-
-    try {
-      final repository = await ref.read(userRepositoryProvider.future);
-      final updated = _copyProfile(widget.profile)
-        ..phoneNumber = _blankToNull(phone)
-        ..telebirrAccount = _blankToNull(telebirr)
-        ..bankName = _blankToNull(bankName)
-        ..bankAccount = _blankToNull(bankAccount);
-      await repository.saveProfile(updated);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _saving = false;
-        _error = error.toString();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    InputDecoration decoration(String label) {
-      return InputDecoration(
-        labelText: label,
-        isDense: true,
-        filled: true,
-        fillColor: isDark
-            ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
-            : Colors.white,
-      );
-    }
-
-    return AlertDialog(
-      title: Text(
-        context.tr('Payment details', 'የክፍያ ዝርዝር'),
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-      ),
-      content: SizedBox(
-        width: 460,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-                onChanged: (_) {
-                  if (_error != null) setState(() => _error = null);
-                },
-                decoration: decoration(context.tr('Phone number', 'የስልክ ቁጥር')),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _telebirr,
-                keyboardType: TextInputType.phone,
-                decoration: decoration('Telebirr'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _bankName,
-                decoration: decoration(context.tr('Bank name', 'የባንክ ስም')),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _bankAccount,
-                keyboardType: TextInputType.number,
-                decoration: decoration(
-                  context.tr('Bank account number', 'የባንክ ሂሳብ ቁጥር'),
-                ),
-              ),
-              if (widget.profile.isDemoMode) ...[
-                const SizedBox(height: 8),
-                Text(
-                  context.tr(
-                    'Demo mode: payment fields are optional.',
-                    'የሙከራ ሁነታ፦ የክፍያ መስኮች አማራጭ ናቸው።',
-                  ),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  _error!,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.alertRed,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(context.tr('Cancel', 'ሰርዝ')),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(context.tr('Save', 'አስቀምጥ')),
-        ),
-      ],
-    );
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Change password dialog
 // ---------------------------------------------------------------------------

@@ -8,11 +8,13 @@ class AppStrings {
   static const String taglineEnglish = 'Finally, business made easy.';
   static const String taglineAmharic = 'በእፎይ እርፍ ይበሉ';
 
-  // Support. One number does both jobs: it is the Telebirr account to pay and
-  // the line to call or SMS for an installation ID check or a new activation
-  // key. The key comes back from the same number.
+  // Support. Both numbers reach the team; the second one (0988545894) is also
+  // the Telebirr account to pay. The activation key comes back from the same
+  // number. Telegram is the quickest way to send an installation ID.
   static const String supportPhone = '0988545894';
+  static const String supportPhoneAlt = '0908258915';
   static const String supportTeam = '@Haregdev Team';
+  static const String supportTelegram = '@haregdev';
 
   // Navigation Labels
   static const Map<String, String> navHome = {'en': 'Home', 'am': 'ዋና ገጽ'};

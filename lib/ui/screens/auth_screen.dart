@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:efoy_licensing/efoy_licensing.dart';
-import 'package:isar/isar.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
@@ -11,7 +10,7 @@ import '../../core/licensing/license_service.dart';
 import '../../core/security/password_hasher.dart';
 import '../../core/utils/l10n.dart';
 import '../../data/local/app_database.dart';
-import '../../data/models/user_profile.dart';
+import '../../data/repositories/user_repository.dart';
 import '../../logic/providers/license_provider.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -28,10 +27,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   final _licenseKeyController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _telebirrController = TextEditingController();
-  final _bankAccountController = TextEditingController();
-  final _bankNameController = TextEditingController();
 
   String? _installationId;
   InstallationDeviceInfo? _deviceInfo;
@@ -39,7 +34,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
   String? _errorMessage;
   String? _successMessage;
   bool _showOnboarding = false;
-  bool _isDemoMode = true;
 
   @override
   void initState() {
@@ -74,10 +68,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     _licenseKeyController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
-    _phoneController.dispose();
-    _telebirrController.dispose();
-    _bankAccountController.dispose();
-    _bankNameController.dispose();
     super.dispose();
   }
 
@@ -263,8 +253,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     try {
       final db = AppDatabase();
       await db.init();
-      final profiles = await db.instance.userProfiles.where().build().findAll();
-      final resolvedProfile = profiles.isNotEmpty ? profiles.first : null;
+      final users = UserRepository(db.instance);
+      final resolvedProfile = await users.getProfile();
 
       if (resolvedProfile == null || resolvedProfile.passwordHash == null) {
         setState(() {
@@ -286,10 +276,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
         return;
       }
 
-      resolvedProfile.lastLogin = DateTime.now();
-      await db.instance.writeTxn(() async {
-        await db.instance.userProfiles.put(resolvedProfile);
-      });
+      await users.saveProfile(resolvedProfile..lastLogin = DateTime.now());
 
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
@@ -340,20 +327,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
       return;
     }
 
-    if (!_isDemoMode) {
-      if (_phoneController.text.trim().isEmpty &&
-          _telebirrController.text.trim().isEmpty &&
-          _bankAccountController.text.trim().isEmpty) {
-        setState(() {
-          _errorMessage = context.tr(
-            'Please provide at least one payment method',
-            'እባክዎ ቢያንስ አንድ የክፍያ ዘዴ ያስገቡ',
-          );
-        });
-        return;
-      }
-    }
-
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -362,39 +335,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
     try {
       final db = AppDatabase();
       await db.init();
-      final isar = db.instance;
-
-      final profile = UserProfile(
-        passwordHash: _hashPassword(newPassword),
-        businessName: 'Efoy Business',
-        businessNameAm: 'የእፎይ ሱቅ',
-        ownerName: 'Store Owner',
-        phoneNumber: _phoneController.text.trim().isEmpty
-            ? null
-            : _phoneController.text.trim(),
-        telebirrAccount: _telebirrController.text.trim().isEmpty
-            ? null
-            : _telebirrController.text.trim(),
-        bankAccount: _bankAccountController.text.trim().isEmpty
-            ? null
-            : _bankAccountController.text.trim(),
-        bankName: _bankNameController.text.trim().isEmpty
-            ? null
-            : _bankNameController.text.trim(),
-        isDemoMode: _isDemoMode,
-        isDarkMode: false,
-        language: 'en',
-      );
-
-      final existing = await isar.userProfiles.where().build().findAll();
-      if (existing.isNotEmpty) {
-        profile.id = existing.first.id;
-        profile.createdAt = existing.first.createdAt;
-      }
-
-      await isar.writeTxn(() async {
-        await isar.userProfiles.put(profile);
-      });
+      // Onboarding owns the password and nothing else: the store names, photo
+      // and language stay exactly as the merchant left them.
+      await UserRepository(
+        db.instance,
+      ).savePassword(_hashPassword(newPassword));
 
       if (mounted) {
         Navigator.of(context).pushReplacementNamed('/home');
@@ -1048,7 +993,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
           // Step 1: Set Password
           Text(
-            context.tr('Step 1: Create Password', 'ደረጃ 1: የይለፍ ቃል ይፍጠሩ'),
+            context.tr('Create your password', 'የይለፍ ቃልዎን ይፍጠሩ'),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -1083,185 +1028,6 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
               labelText: context.tr('Confirm Password', 'የይለፍ ቃል አረጋግጥ'),
               hintText: context.tr('Re-enter password', 'የይለፍ ቃል እንደገና ያስገቡ'),
               prefixIcon: const Icon(Icons.lock_outline),
-            ),
-          ),
-
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-
-          // Step 2: Demo Mode Toggle
-          Text(
-            context.tr('Step 2: Choose Mode', 'ደረጃ 2: ሁነታ ይምረጡ'),
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _isDemoMode
-                  ? AppColors.warningAmber.withValues(alpha: 0.1)
-                  : AppColors.primaryTeal.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _isDemoMode
-                    ? AppColors.warningAmber.withValues(alpha: 0.3)
-                    : AppColors.primaryTeal.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isDemoMode ? Icons.visibility : Icons.store,
-                  color: _isDemoMode
-                      ? AppColors.warningAmber
-                      : AppColors.primaryTeal,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _isDemoMode
-                            ? context.tr('Demo Mode', 'የሙከራ ሁነታ')
-                            : context.tr('Production Mode', 'የምርት ሁነታ'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _isDemoMode
-                            ? context.tr(
-                                'Testing with sample data (payment info optional)',
-                                'በናሙና ውሂብ መሞከር (የክፍያ መረጃ አማራጭ)',
-                              )
-                            : context.tr(
-                                'Real business mode (payment info required)',
-                                'እውነተኛ የንግድ ሁነታ (የክፍያ መረጃ ያስፈልጋል)',
-                              ),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: !_isDemoMode,
-                  onChanged: (value) {
-                    setState(() {
-                      _isDemoMode = !value;
-                    });
-                  },
-                  activeThumbColor: AppColors.primaryTeal,
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-          const Divider(),
-          const SizedBox(height: 24),
-
-          // Step 3: Payment Information (optional in demo mode)
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.tr('Step 3: Payment Information', 'ደረጃ 3: የክፍያ መረጃ'),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (_isDemoMode) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: scheme.onSurfaceVariant.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    context.tr('Optional', 'አማራጭ'),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _isDemoMode
-                ? context.tr(
-                    'You can add this information later from Profile',
-                    'ይህን መረጃ በኋላ ከመገለጫ ማከል ይችላሉ',
-                  )
-                : context.tr(
-                    'Required for accepting customer payments',
-                    'የደንበኛ ክፍያ ለመቀበል ያስፈልጋል',
-                  ),
-            style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: context.tr('Phone Number', 'የስልክ ቁጥር'),
-              hintText: context.tr('09XXXXXXXX', '09XXXXXXXX'),
-              prefixIcon: const Icon(Icons.phone),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _telebirrController,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: context.tr('TeleBirr Account', 'የቴሌብር አካውንት'),
-              hintText: context.tr('TeleBirr number', 'የቴሌብር ቁጥር'),
-              prefixIcon: const Icon(Icons.payment),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _bankAccountController,
-            decoration: InputDecoration(
-              labelText: context.tr('Bank Account Number', 'የባንክ አካውንት ቁጥር'),
-              hintText: context.tr('Account number', 'የአካውንት ቁጥር'),
-              prefixIcon: const Icon(Icons.account_balance),
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _bankNameController,
-            decoration: InputDecoration(
-              labelText: context.tr('Bank Name', 'የባንክ ስም'),
-              hintText: context.tr(
-                'e.g., Commercial Bank of Ethiopia',
-                'ለምሳሌ፡ የኢትዮጵያ ንግድ ባንክ',
-              ),
-              prefixIcon: const Icon(Icons.business),
             ),
           ),
 

@@ -14,7 +14,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
@@ -23,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    
+
     // Setup animations
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1500),
@@ -101,16 +102,19 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: AppColors.splashGradient,
+          // The dark gradient is the brand's opening frame, not a theme
+          // default: hardcoding it made every light-mode start look dark.
+          gradient: isDark ? AppColors.splashGradient : _lightBackdrop(context),
         ),
         child: SafeArea(
           child: Column(
             children: [
               const Spacer(flex: 2),
-              
+
               // Logo Card with Animation
               FadeTransition(
                 opacity: _fadeAnimation,
@@ -119,20 +123,17 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                   child: _buildLogoCard(),
                 ),
               ),
-              
+
               const SizedBox(height: 56),
-              
+
               // Brand Name in Amharic
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: _buildBrandText(),
-              ),
-              
+              FadeTransition(opacity: _fadeAnimation, child: _buildBrandText()),
+
               const Spacer(flex: 2),
-              
+
               // Animated Loading Dots
               _buildLoadingDots(),
-              
+
               const SizedBox(height: 48),
             ],
           ),
@@ -141,41 +142,74 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
   }
 
+  /// Light-mode backdrop: the app surface with a wash of the current accent, so
+  /// the splash follows the theme and any accent the merchant picked.
+  RadialGradient _lightBackdrop(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return RadialGradient(
+      center: const Alignment(0.0, -0.35),
+      radius: 1.0,
+      colors: [
+        Color.alphaBlend(
+          scheme.primaryContainer.withValues(alpha: 0.18),
+          scheme.surface,
+        ),
+        scheme.surface,
+      ],
+    );
+  }
+
   Widget _buildLogoCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 218,
       height: 142,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(26),
+        border: isDark
+            ? null
+            : Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryGreen.withValues(alpha: 0.25),
+            color:
+                (isDark
+                        ? AppColors.primaryGreen
+                        : Theme.of(context).colorScheme.primary)
+                    .withValues(alpha: isDark ? 0.25 : 0.18),
             blurRadius: 40,
             offset: const Offset(0, 10),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
+            color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.12),
             blurRadius: 30,
             offset: const Offset(0, 20),
           ),
         ],
       ),
       padding: const EdgeInsets.all(20),
-      child: Image.asset(
-        'asset/efoy.jpg',
-        fit: BoxFit.contain,
-      ),
+      child: Image.asset('asset/efoy.jpg', fit: BoxFit.contain),
     );
   }
 
   Widget _buildBrandText() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = Theme.of(context).colorScheme;
+    final brandColors = isDark
+        ? const [Colors.white, Color(0xFF75F0A0)]
+        : [
+            scheme.primary,
+            Color.alphaBlend(
+              scheme.primary.withValues(alpha: 0.45),
+              Colors.white,
+            ),
+          ];
     return Column(
       children: [
         // Amharic Brand Name
         ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Colors.white, Color(0xFF75F0A0)],
+          shaderCallback: (bounds) => LinearGradient(
+            colors: brandColors,
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ).createShader(bounds),
@@ -198,7 +232,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
           style: GoogleFonts.notoSansEthiopic(
             fontSize: 16.5,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF6BE39B),
+            color: isDark ? const Color(0xFF6BE39B) : scheme.primary,
             letterSpacing: 0.5,
           ),
         ),
@@ -207,6 +241,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Widget _buildLoadingDots() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dotColor = isDark
+        ? AppColors.primaryGreen
+        : Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
@@ -216,7 +254,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             animation: _animationController,
             builder: (context, child) {
               final delay = index * 0.3;
-              final value = (_animationController.value - delay).clamp(0.0, 1.0);
+              final value = (_animationController.value - delay).clamp(
+                0.0,
+                1.0,
+              );
               final opacity = (0.35 + (value * 0.65)).clamp(0.35, 1.0);
               final scale = 0.9 + (value * 0.2);
 
@@ -226,12 +267,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 width: isCenter ? 10 : 8,
                 height: isCenter ? 10 : 8,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withValues(alpha: opacity),
+                  color: dotColor.withValues(alpha: opacity),
                   shape: BoxShape.circle,
                   boxShadow: isCenter
                       ? [
                           BoxShadow(
-                            color: AppColors.primaryGreen.withValues(alpha: 0.5),
+                            color: dotColor.withValues(alpha: 0.5),
                             blurRadius: 4,
                             spreadRadius: 1,
                           ),

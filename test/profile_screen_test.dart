@@ -90,13 +90,15 @@ void main() {
   });
 
   group('ProfileScreen support card', () {
-    testWidgets('offers the Telebirr line and team once the trial is over', (
+    testWidgets('offers the team contacts once the trial is over', (
       tester,
     ) async {
       await pump(tester, access: _trialOver);
 
-      expect(find.text('Need help or a licence?'), findsOneWidget);
+      expect(find.text('Customer support'), findsOneWidget);
+      expect(find.text(AppStrings.supportTelegram), findsOneWidget);
       expect(find.text(AppStrings.supportPhone), findsWidgets);
+      expect(find.text(AppStrings.supportPhoneAlt), findsOneWidget);
       expect(
         find.text('${AppStrings.supportPhone} · ${AppStrings.supportTeam}'),
         findsOneWidget,
@@ -104,12 +106,21 @@ void main() {
       expect(find.text('AAAA-BBBB-CCCC-DDDD'), findsOneWidget);
     });
 
-    testWidgets('stays out of the way while the licence is paid up', (
+    testWidgets('stays reachable while the licence is paid up', (tester) async {
+      await pump(tester, access: _licensed);
+
+      expect(find.text('Customer support'), findsOneWidget);
+      expect(find.text(AppStrings.supportTelegram), findsOneWidget);
+    });
+
+    testWidgets('no longer asks the merchant for their own bank account', (
       tester,
     ) async {
       await pump(tester, access: _licensed);
 
-      expect(find.text('Need help or a licence?'), findsNothing);
+      expect(find.text('Payment details'), findsNothing);
+      expect(find.text('Bank'), findsNothing);
+      expect(find.text('Demo'), findsNothing);
     });
   });
 }
