@@ -263,6 +263,7 @@ const _SaleModelpaymentMethodEnumValueMap = {
   'cbeBirr': 2,
   'amharaBank': 3,
   'mixed': 4,
+  'credit': 5,
 };
 const _SaleModelpaymentMethodValueEnumMap = {
   0: PaymentMethod.cash,
@@ -270,6 +271,7 @@ const _SaleModelpaymentMethodValueEnumMap = {
   2: PaymentMethod.cbeBirr,
   3: PaymentMethod.amharaBank,
   4: PaymentMethod.mixed,
+  5: PaymentMethod.credit,
 };
 
 Id _saleModelGetId(SaleModel object) {

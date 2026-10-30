@@ -9,7 +9,7 @@ class SaleModel {
   // Transaction metadata
   @Index()
   late DateTime saleDate;
-  
+
   late String transactionId; // UUID for unique identification
 
   // Line items stored as JSON-encoded list
@@ -23,7 +23,7 @@ class SaleModel {
   // Payment information
   @enumerated
   late PaymentMethod paymentMethod;
-  
+
   double? amountReceived;
   double? changeGiven;
 
@@ -75,7 +75,9 @@ class SaleModel {
 
   factory SaleModel.fromJson(Map<String, dynamic> json) {
     return SaleModel(
-      saleDate: json['saleDate'] != null ? DateTime.parse(json['saleDate'] as String) : DateTime.now(),
+      saleDate: json['saleDate'] != null
+          ? DateTime.parse(json['saleDate'] as String)
+          : DateTime.now(),
       transactionId: json['transactionId'] as String,
       lineItems: (json['lineItems'] as List)
           .map((item) => SaleLineItem.fromJson(item as Map<String, dynamic>))
@@ -83,14 +85,20 @@ class SaleModel {
       totalAmount: (json['totalAmount'] as num).toDouble(),
       totalCost: (json['totalCost'] as num).toDouble(),
       grossProfit: (json['grossProfit'] as num).toDouble(),
-      paymentMethod: PaymentMethod.values.byName(json['paymentMethod'] as String),
+      paymentMethod: PaymentMethod.values.byName(
+        json['paymentMethod'] as String,
+      ),
       amountReceived: (json['amountReceived'] as num?)?.toDouble(),
       changeGiven: (json['changeGiven'] as num?)?.toDouble(),
       notes: json['notes'] as String?,
       cashierName: json['cashierName'] as String?,
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
       isVoided: json['isVoided'] as bool? ?? false,
-      voidedAt: json['voidedAt'] != null ? DateTime.parse(json['voidedAt'] as String) : null,
+      voidedAt: json['voidedAt'] != null
+          ? DateTime.parse(json['voidedAt'] as String)
+          : null,
     )..id = json['id'] as int;
   }
 }
@@ -140,4 +148,9 @@ enum PaymentMethod {
   cbeBirr,
   amharaBank,
   mixed,
+
+  /// Nothing was paid and the balance went onto the debts list. Isar stores
+  /// enums by position, so this stays last - inserting one earlier would
+  /// relabel every sale already on the phone.
+  credit,
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
+
 /// Standard screen header: title, one contextual subtitle line, optional
 /// leading mark and trailing actions.
 ///
@@ -114,6 +116,63 @@ class HeaderActionButton extends StatelessWidget {
       ),
       icon: Icon(icon, size: 18),
       label: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+/// A tonal header icon with an optional count badge, used for held orders and
+/// open balances so the counter can see what is waiting without opening it.
+class HeaderBadgeButton extends StatelessWidget {
+  const HeaderBadgeButton({
+    super.key,
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.count = 0,
+    this.badgeColor = AppColors.alertAmber,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  /// How many items are waiting. Zero hides the badge entirely.
+  final int count;
+  final Color badgeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        IconButton.filledTonal(
+          tooltip: tooltip,
+          onPressed: onPressed,
+          icon: Icon(icon),
+        ),
+        if (count > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: badgeColor,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                '$count',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

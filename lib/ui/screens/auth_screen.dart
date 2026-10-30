@@ -510,12 +510,26 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
           TextField(
             controller: _passwordController,
             obscureText: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _handleLogin(),
+            onChanged: (_) {
+              // The banner belongs to the attempt that failed; once the
+              // merchant starts correcting the password it should go away.
+              if (_errorMessage != null) {
+                setState(() => _errorMessage = null);
+              }
+            },
             decoration: InputDecoration(
               labelText: context.tr('Password', 'የይለፍ ቃል'),
               hintText: context.tr('Enter your password', 'የይለፍ ቃልዎን ያስገቡ'),
               prefixIcon: const Icon(Icons.lock_outline),
             ),
           ),
+
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            _FeedbackBanner(message: _errorMessage!, isError: true),
+          ],
 
           const SizedBox(height: 24),
 
@@ -813,69 +827,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
 
           // Error Message
           if (_errorMessage != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.alertRed.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppColors.alertRed.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    color: AppColors.alertRed,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(
-                        color: AppColors.alertRed,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _FeedbackBanner(message: _errorMessage!, isError: true),
             const SizedBox(height: 16),
           ],
 
           // Success Message
           if (_successMessage != null) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.successGreen.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppColors.successGreen.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline,
-                    color: AppColors.successGreen,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _successMessage!,
-                      style: const TextStyle(
-                        color: AppColors.successGreen,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _FeedbackBanner(message: _successMessage!, isError: false),
             const SizedBox(height: 16),
           ],
 
@@ -1098,6 +1056,53 @@ class _AuthScreenState extends ConsumerState<AuthScreen>
             },
             child: Text(
               context.tr('← Back to License Entry', '← ወደ ፈቃድ ማስገቢያ ተመለስ'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Inline answer to whatever the merchant just tried: a wrong password, a
+/// rejected code, a successful activation.
+///
+/// One component for both tabs so a failure never looks different depending on
+/// which half of the screen it came from.
+class _FeedbackBanner extends StatelessWidget {
+  const _FeedbackBanner({required this.message, required this.isError});
+
+  final String message;
+  final bool isError;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isError ? AppColors.alertRed : AppColors.successGreen;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.check_circle_outline,
+            color: color,
+            size: 20,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                height: 1.35,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

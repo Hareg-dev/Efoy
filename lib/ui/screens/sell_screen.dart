@@ -10,6 +10,7 @@ import '../../data/models/held_order_model.dart';
 import '../../data/models/product_model.dart';
 import '../../logic/providers/cart_provider.dart';
 import '../../logic/providers/repository_providers.dart';
+import '../../logic/providers/theme_provider.dart';
 import '../widgets/cart_sheet.dart';
 import '../widgets/product_card.dart';
 import '../widgets/screen_header.dart';
@@ -86,10 +87,7 @@ class _SellScreenState extends ConsumerState<SellScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: AppColors.alertRed,
-        ),
+        SnackBar(content: Text(message), backgroundColor: AppColors.alertRed),
       );
   }
 
@@ -106,6 +104,8 @@ class _SellScreenState extends ConsumerState<SellScreen> {
     final productsAsync = ref.watch(productListProvider);
     final cart = ref.watch(cartProvider);
     final heldCount = ref.watch(heldOrdersProvider).valueOrNull?.length ?? 0;
+    final openDebtCount = ref.watch(openDebtsProvider).valueOrNull?.length ?? 0;
+    final accent = ref.watch(accentProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -127,43 +127,17 @@ class _SellScreenState extends ConsumerState<SellScreen> {
                   'ለጋሪ ለመጨመር እቃውን ይንኩ',
                 ),
                 actions: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      IconButton.filledTonal(
-                        tooltip: context.tr(
-                          'Hold / resume order',
-                          'ትዕዛዝ አቆይ',
-                        ),
-                        onPressed: _handleHold,
-                        icon: const Icon(Icons.pause_circle_outline),
-                      ),
-                      if (heldCount > 0)
-                        Positioned(
-                          right: -2,
-                          top: -2,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.alertAmber,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 18,
-                              minHeight: 18,
-                            ),
-                            child: Text(
-                              '$heldCount',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
+                  HeaderBadgeButton(
+                    tooltip: context.tr('Hold / resume order', 'ትዕዛዝ አቆይ'),
+                    icon: Icons.pause_circle_outline,
+                    count: heldCount,
+                    onPressed: _handleHold,
+                  ),
+                  HeaderBadgeButton(
+                    tooltip: context.tr('Who owes me', 'ማን ይዳናል'),
+                    icon: Icons.handshake_outlined,
+                    count: openDebtCount,
+                    onPressed: () => Navigator.of(context).pushNamed('/debts'),
                   ),
                 ],
               ),
@@ -185,11 +159,11 @@ class _SellScreenState extends ConsumerState<SellScreen> {
                     ),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                      childAspectRatio: 0.75,
-                    ),
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: 0.75,
+                        ),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
                       final product = products[index];
@@ -198,18 +172,17 @@ class _SellScreenState extends ConsumerState<SellScreen> {
                         quantityInCart: cart.quantityFor(product.id),
                         onTap: product.isOutOfStock
                             ? () => _showError(
-                                  context.tr(
-                                    '${product.name} is out of stock',
-                                    '${product.name} ከመጋዘን አልቋል',
-                                  ),
-                                )
+                                context.tr(
+                                  '${product.name} is out of stock',
+                                  '${product.name} ከመጋዘን አልቋል',
+                                ),
+                              )
                             : () => _addToCart(product),
                       );
                     },
                   );
                 },
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, _) => Center(
                   child: Padding(
                     padding: const EdgeInsets.all(AppTheme.spaceL),
@@ -238,18 +211,15 @@ class _SellScreenState extends ConsumerState<SellScreen> {
                   : Container(
                       padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            AppColors.profitGradStart,
-                            AppColors.profitGradEnd,
-                          ],
+                        gradient: LinearGradient(
+                          colors: [accent.profitStart, accent.profitEnd],
                         ),
-                        borderRadius:
-                            BorderRadius.circular(AppTheme.radiusLarge),
+                        borderRadius: BorderRadius.circular(
+                          AppTheme.radiusLarge,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.profitGradStart
-                                .withValues(alpha: 0.35),
+                            color: accent.profitStart.withValues(alpha: 0.35),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
@@ -354,9 +324,7 @@ class _SellScreenState extends ConsumerState<SellScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            context.tr('Sample products added', 'የናሙና እቃዎች ተጨመሩ'),
-          ),
+          content: Text(context.tr('Sample products added', 'የናሙና እቃዎች ተጨመሩ')),
           backgroundColor: AppColors.primaryTeal,
         ),
       );
@@ -401,10 +369,7 @@ class _EmptyProducts extends StatelessWidget {
                 'ለመሸጥ ከእቃዎች ገጽ እቃ ይጨምሩ።',
               ),
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: scheme.onSurfaceVariant,
-              ),
+              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
@@ -521,9 +486,7 @@ class _HeldOrderTile extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -555,8 +518,9 @@ class _HeldOrderTile extends ConsumerWidget {
           IconButton(
             tooltip: 'Delete',
             onPressed: () async {
-              final repository =
-                  await ref.read(heldOrderRepositoryProvider.future);
+              final repository = await ref.read(
+                heldOrderRepositoryProvider.future,
+              );
               await repository.delete(order.id);
             },
             icon: const Icon(Icons.delete_outline, size: 20),
@@ -569,9 +533,9 @@ class _HeldOrderTile extends ConsumerWidget {
                 Navigator.of(context).pop();
               } on CartException catch (error) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(error.message)),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(error.message)));
               }
             },
             child: Text(context.tr('Restore', 'መልስ')),

@@ -7,6 +7,7 @@ import 'package:isar/isar.dart';
 import 'package:efoy_retail_app/core/backup/data_backup.dart';
 import 'package:efoy_retail_app/core/security/password_hasher.dart';
 import 'package:efoy_retail_app/core/settings/data_deletion_service.dart';
+import 'package:efoy_retail_app/data/models/debt_model.dart';
 import 'package:efoy_retail_app/data/models/expense_model.dart';
 import 'package:efoy_retail_app/data/models/held_order_model.dart';
 import 'package:efoy_retail_app/data/models/license_model.dart';
@@ -57,7 +58,9 @@ void main() {
         await isar.userProfiles.put(
           UserProfile(
             businessName: 'Test Shop',
-            passwordHash: password == null ? null : PasswordHasher.hash(password),
+            passwordHash: password == null
+                ? null
+                : PasswordHasher.hash(password),
           ),
         );
         await isar.licenseModels.put(
@@ -90,16 +93,15 @@ void main() {
           ),
         );
 
-        final line =
-            SaleLineItem()
-              ..productId = product.id
-              ..productName = product.name
-              ..quantity = 2
-              ..unitPrice = 60
-              ..unitCost = 50
-              ..lineTotal = 120
-              ..lineCost = 100
-              ..lineProfit = 20;
+        final line = SaleLineItem()
+          ..productId = product.id
+          ..productName = product.name
+          ..quantity = 2
+          ..unitPrice = 60
+          ..unitCost = 50
+          ..lineTotal = 120
+          ..lineCost = 100
+          ..lineProfit = 20;
         await isar.saleModels.put(
           SaleModel(
             saleDate: t0,
@@ -145,6 +147,15 @@ void main() {
         await isar.heldOrderModels.put(
           HeldOrderModel(items: [held], heldAt: t0),
         );
+        await isar.debtModels.put(
+          DebtModel(
+            saleTransactionId: 'TX-001',
+            customerName: 'Wondimu',
+            totalAmount: 120,
+            paidAmount: 20,
+            openedAt: t0,
+          ),
+        );
       });
     }
 
@@ -159,9 +170,10 @@ void main() {
       expect(summary.expenses, 1);
       expect(summary.restockLogs, 1);
       expect(summary.heldOrders, 1);
+      expect(summary.debts, 1);
       expect(summary.licenses, 1);
       expect(summary.profileExists, isTrue);
-      expect(summary.businessTotal, 6);
+      expect(summary.businessTotal, 7);
     });
 
     test('a wrong password deletes nothing', () async {
@@ -203,17 +215,17 @@ void main() {
 
     test('business records scope keeps the profile and the license', () async {
       await seed();
-      final removed = await DataDeletionService(isar).delete(
-        scope: DataDeletionScope.businessRecords,
-        password: _password,
-      );
+      final removed = await DataDeletionService(
+        isar,
+      ).delete(scope: DataDeletionScope.businessRecords, password: _password);
 
-      expect(removed.businessTotal, 6);
+      expect(removed.businessTotal, 7);
       expect(await isar.productModels.count(), 0);
       expect(await isar.saleModels.count(), 0);
       expect(await isar.expenseModels.count(), 0);
       expect(await isar.restockLogModels.count(), 0);
       expect(await isar.heldOrderModels.count(), 0);
+      expect(await isar.debtModels.count(), 0);
 
       expect(await isar.userProfiles.count(), 1);
       expect(await isar.licenseModels.count(), 1);
@@ -221,10 +233,9 @@ void main() {
 
     test('entire account scope wipes the store and the license too', () async {
       await seed();
-      await DataDeletionService(isar).delete(
-        scope: DataDeletionScope.entireAccount,
-        password: _password,
-      );
+      await DataDeletionService(
+        isar,
+      ).delete(scope: DataDeletionScope.entireAccount, password: _password);
 
       expect(await isar.productModels.count(), 0);
       expect(await isar.userProfiles.count(), 0);
@@ -239,14 +250,28 @@ void main() {
           {'name': 'Sugar'},
         ],
         'sales': <String>[],
+        'debts': [
+          {
+            'saleTransactionId': 'TX-001',
+            'customerName': 'Wondimu',
+            'totalAmount': 120.0,
+            'paidAmount': 20.0,
+            'isOpen': true,
+            'openedAt': '2026-03-01T00:00:00.000Z',
+            'payments': [
+              {'amount': 20.0, 'at': '2026-03-05T00:00:00.000Z'},
+            ],
+          },
+        ],
         'somethingElse': [
           {'x': 1},
         ],
       });
 
       final data = DataBackup.parse(raw);
-      expect(data.keys, unorderedEquals(['products', 'sales']));
+      expect(data.keys, unorderedEquals(['products', 'sales', 'debts']));
       expect(data['products'], hasLength(1));
+      expect(DebtModel.fromJson(data['debts']!.single).balanceDue, 100);
     });
 
     test('rejects text that is not JSON', () {
@@ -257,7 +282,10 @@ void main() {
     });
 
     test('rejects valid JSON that is not a backup', () {
-      expect(() => DataBackup.parse('{"hello": 1}'), throwsA(isA<BackupFormatException>()));
+      expect(
+        () => DataBackup.parse('{"hello": 1}'),
+        throwsA(isA<BackupFormatException>()),
+      );
       expect(
         () => DataBackup.parse('{"products": {"name": "Sugar"}}'),
         throwsA(isA<BackupFormatException>()),
@@ -266,7 +294,10 @@ void main() {
         () => DataBackup.parse('{"products": ["just a string"]}'),
         throwsA(isA<BackupFormatException>()),
       );
-      expect(() => DataBackup.parse('[1, 2, 3]'), throwsA(isA<BackupFormatException>()));
+      expect(
+        () => DataBackup.parse('[1, 2, 3]'),
+        throwsA(isA<BackupFormatException>()),
+      );
     });
   });
 }

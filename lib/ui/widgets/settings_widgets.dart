@@ -105,10 +105,11 @@ class SettingsActionTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 10.5,
+                      height: 1.35,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
@@ -155,8 +156,9 @@ class SettingsChoiceTile extends StatelessWidget {
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
-          color:
-              selected ? scheme.primary.withValues(alpha: 0.10) : scheme.surface,
+          color: selected
+              ? scheme.primary.withValues(alpha: 0.10)
+              : scheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: selected

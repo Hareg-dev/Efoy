@@ -38,6 +38,7 @@ class DataBackup {
     'licenses',
     'userProfiles',
     'heldOrders',
+    'debts',
   };
 
   final AppDatabase _database;

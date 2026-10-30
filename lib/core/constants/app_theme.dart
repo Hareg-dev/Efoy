@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'app_accents.dart';
 import 'app_colors.dart';
 
 /// Application Theme Configuration
@@ -19,25 +20,50 @@ class AppTheme {
   static const double spaceL = 24.0;
   static const double spaceXL = 32.0;
 
-  /// Light Theme Data
-  static ThemeData get lightTheme {
+  /// Light Theme Data, in the brand teal.
+  static ThemeData get lightTheme => lightThemeFor(AppAccent.teal);
+
+  /// Light theme in the accent the merchant picked.
+  ///
+  /// Teal is built by hand rather than from a seed so the shop that never
+  /// touches the setting keeps exactly the palette it shipped with.
+  static ThemeData lightThemeFor(AppAccent accent) {
+    final primary = accent == AppAccent.teal
+        ? AppColors.primaryTeal
+        : accent.seed;
+    final scheme = accent == AppAccent.teal
+        ? const ColorScheme.light(
+            primary: AppColors.primaryTeal,
+            secondary: AppColors.primaryGreen,
+            tertiary: AppColors.mintGreen,
+            error: AppColors.alertRed,
+            surface: Colors.white,
+            onPrimary: Colors.white,
+            onSecondary: Colors.white,
+            onSurface: AppColors.textPrimary,
+            onError: Colors.white,
+          )
+        : ColorScheme.fromSeed(
+            seedColor: accent.seed,
+            brightness: Brightness.light,
+          ).copyWith(
+            primary: accent.seed,
+            secondary: accent.secondary,
+            tertiary: accent.tertiary,
+            error: AppColors.alertRed,
+            surface: Colors.white,
+            onPrimary: Colors.white,
+            onSurface: AppColors.textPrimary,
+            onError: Colors.white,
+          );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: AppColors.primaryTeal,
+      primaryColor: primary,
       scaffoldBackgroundColor: AppColors.neutralBg,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primaryTeal,
-        secondary: AppColors.primaryGreen,
-        tertiary: AppColors.mintGreen,
-        error: AppColors.alertRed,
-        surface: Colors.white,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: AppColors.textPrimary,
-        onError: Colors.white,
-      ),
-      
+      colorScheme: scheme,
+
       // Typography
       textTheme: GoogleFonts.interTextTheme().copyWith(
         displayLarge: GoogleFonts.inter(
@@ -88,7 +114,7 @@ class AppTheme {
           color: AppColors.textTertiary,
         ),
       ),
-      
+
       // Card Theme
       cardTheme: const CardThemeData(
         elevation: 0,
@@ -96,12 +122,9 @@ class AppTheme {
           borderRadius: BorderRadius.all(Radius.circular(radiusLarge)),
         ),
         color: Colors.white,
-        margin: EdgeInsets.symmetric(
-          horizontal: spaceM,
-          vertical: spaceS,
-        ),
+        margin: EdgeInsets.symmetric(horizontal: spaceM, vertical: spaceS),
       ),
-      
+
       // AppBar Theme
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -114,11 +137,11 @@ class AppTheme {
           color: AppColors.textPrimary,
         ),
       ),
-      
+
       // Elevated Button Theme
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryTeal,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(
@@ -134,12 +157,12 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Outlined Button Theme
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.primaryTeal,
-          side: const BorderSide(color: AppColors.primaryTeal, width: 1.5),
+          foregroundColor: primary,
+          side: BorderSide(color: primary, width: 1.5),
           padding: const EdgeInsets.symmetric(
             horizontal: spaceL,
             vertical: spaceM,
@@ -149,7 +172,7 @@ class AppTheme {
           ),
         ),
       ),
-      
+
       // Input Decoration Theme
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -164,10 +187,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
-          borderSide: const BorderSide(
-            color: AppColors.primaryTeal,
-            width: 2,
-          ),
+          borderSide: BorderSide(color: primary, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
@@ -178,18 +198,18 @@ class AppTheme {
           vertical: spaceM,
         ),
       ),
-      
+
       // Bottom Navigation Bar Theme
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: Colors.white,
-        selectedItemColor: AppColors.primaryTeal,
+        selectedItemColor: primary,
         unselectedItemColor: AppColors.neutralGray,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: AppColors.tealTint,
+        indicatorColor: accent.tint,
         height: 66,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStateProperty.resolveWith(
@@ -199,7 +219,7 @@ class AppTheme {
                 ? FontWeight.w800
                 : FontWeight.w600,
             color: states.contains(WidgetState.selected)
-                ? AppColors.primaryDark
+                ? accent.deep
                 : AppColors.textSecondary,
           ),
         ),
@@ -207,45 +227,68 @@ class AppTheme {
     );
   }
 
-  /// Dark Theme Data
-  static ThemeData get darkTheme {
+  /// Dark Theme Data, in the brand teal.
+  static ThemeData get darkTheme => darkThemeFor(AppAccent.teal);
+
+  /// Dark theme in the accent the merchant picked.
+  static ThemeData darkThemeFor(AppAccent accent) {
+    final primary = accent == AppAccent.teal
+        ? AppColors.primaryTeal
+        : accent.seed;
+    final scheme = accent == AppAccent.teal
+        ? const ColorScheme.dark(
+            primary: AppColors.primaryTeal,
+            secondary: AppColors.primaryGreen,
+            tertiary: AppColors.mintGreen,
+            error: AppColors.alertRed,
+            surface: AppColors.darkSurface,
+            onPrimary: Colors.white,
+            onSecondary: Colors.white,
+            onSurface: AppColors.textOnDark,
+            onError: Colors.white,
+          )
+        : ColorScheme.fromSeed(
+            seedColor: accent.seed,
+            brightness: Brightness.dark,
+          ).copyWith(
+            primary: Color.lerp(accent.seed, Colors.white, 0.35)!,
+            secondary: accent.secondary,
+            tertiary: accent.tertiary,
+            error: AppColors.alertRed,
+            surface: AppColors.darkSurface,
+            onPrimary: Colors.white,
+            onSurface: AppColors.textOnDark,
+            onError: Colors.white,
+          );
+
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: AppColors.primaryTeal,
+      primaryColor: primary,
       scaffoldBackgroundColor: AppColors.darkBg,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primaryTeal,
-        secondary: AppColors.primaryGreen,
-        tertiary: AppColors.mintGreen,
-        error: AppColors.alertRed,
-        surface: AppColors.darkSurface,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: AppColors.textOnDark,
-        onError: Colors.white,
-      ),
-      
+      colorScheme: scheme,
+
       // Typography (same as light with adjusted colors)
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-        displayLarge: GoogleFonts.inter(
-          fontSize: 52,
-          fontWeight: FontWeight.w900,
-          letterSpacing: -0.5,
-          color: AppColors.textOnDark,
-        ),
-        headlineLarge: GoogleFonts.inter(
-          fontSize: 28,
-          fontWeight: FontWeight.w700,
-          color: AppColors.textOnDark,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textOnDark,
-        ),
-      ),
-      
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme)
+          .copyWith(
+            displayLarge: GoogleFonts.inter(
+              fontSize: 52,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+              color: AppColors.textOnDark,
+            ),
+            headlineLarge: GoogleFonts.inter(
+              fontSize: 28,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textOnDark,
+            ),
+            bodyLarge: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textOnDark,
+            ),
+          ),
+
       // Card Theme
       cardTheme: const CardThemeData(
         elevation: 0,
@@ -254,7 +297,7 @@ class AppTheme {
         ),
         color: AppColors.darkCard,
       ),
-      
+
       // AppBar Theme
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -266,11 +309,11 @@ class AppTheme {
           color: AppColors.textOnDark,
         ),
       ),
-      
+
       // Bottom Navigation Bar Theme
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.darkSurface,
-        selectedItemColor: AppColors.primaryGreen,
+        selectedItemColor: scheme.primary,
         unselectedItemColor: AppColors.neutralGray,
         type: BottomNavigationBarType.fixed,
         elevation: 8,

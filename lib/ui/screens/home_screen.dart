@@ -5,8 +5,11 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/licensing/license_access_state.dart';
+import '../../core/licensing/license_gate.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/l10n.dart';
+import '../../data/models/sale_model.dart';
+import '../../data/repositories/repository_exceptions.dart';
 import '../../logic/calculators/profit_engine.dart';
 import '../../logic/providers/license_provider.dart';
 import '../../logic/providers/profit_provider.dart';
@@ -108,7 +111,7 @@ class HomeScreen extends ConsumerWidget {
                       const SizedBox(height: AppTheme.spaceL),
                       _buildAlerts(context, summary),
                       const SizedBox(height: AppTheme.spaceL),
-                      _buildRecentActivity(context, summary),
+                      _buildRecentActivity(context, ref, summary),
                       const SizedBox(height: AppTheme.spaceL),
                       _buildQuickSellButton(context),
                       const SizedBox(height: AppTheme.spaceXL),
@@ -239,7 +242,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentActivity(BuildContext context, DashboardSummary summary) {
+  Widget _buildRecentActivity(
+    BuildContext context,
+    WidgetRef ref,
+    DashboardSummary summary,
+  ) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
@@ -301,18 +308,30 @@ class HomeScreen extends ConsumerWidget {
                     ),
                     subtitle: Text(
                       context.tr(
-                        '${summary.recentSales[i].lineItems.length} item(s)',
-                        '${summary.recentSales[i].lineItems.length} ዕቃዎች',
+                        '${summary.recentSales[i].lineItems.length} item(s) · '
+                            '${CurrencyFormatter.formatBirrWhole(summary.recentSales[i].totalAmount)}',
+                        '${summary.recentSales[i].lineItems.length} ዕቃዎች · '
+                            '${CurrencyFormatter.formatBirrWhole(summary.recentSales[i].totalAmount)}',
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: Text(
-                      CurrencyFormatter.formatBirrWhole(
-                        summary.recentSales[i].totalAmount,
+                    trailing: TextButton.icon(
+                      onPressed: () =>
+                          _undoSale(context, ref, summary.recentSales[i]),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.alertRed,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: const Size(0, 32),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
+                      icon: const Icon(Icons.undo_rounded, size: 16),
+                      label: Text(
+                        context.tr('Undo', 'ቀልብስ'),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                   ),
@@ -322,6 +341,105 @@ class HomeScreen extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  /// Undo a sale that was rung up by mistake.
+  ///
+  /// Asks first, because it moves stock and receivables back; then reports
+  /// exactly what was restored instead of leaving the counter guessing.
+  Future<void> _undoSale(
+    BuildContext context,
+    WidgetRef ref,
+    SaleModel sale,
+  ) async {
+    final units = sale.lineItems.fold<int>(
+      0,
+      (sum, line) => sum + line.quantity,
+    );
+    // A credit or part-paid invoice left a balance on the receivables list.
+    final leftBalance =
+        (sale.amountReceived ?? sale.totalAmount) + 0.005 < sale.totalAmount;
+    final undoLabel = context.tr('Undo sale', 'ሽያጩን ቀልብስ');
+    final doneMessage = context.tr(
+      'Sale undone. $units unit(s) went back into stock'
+          '${leftBalance ? ' and the balance was cleared' : ''}.',
+      'ሽያጩ ተቀልብሷል። $units እቃ ወደ ክምችት ተመልሷል'
+          '${leftBalance ? ' ቀሪውም ጸድቷል' : ''}።',
+    );
+    final licenseMessage = context.tr(
+      'Your license or trial has ended. Renew in Profile to undo a sale. '
+          'Existing records stay available.',
+      'ፈቃድዎ ወይም ሙከራዎ አብቋል። ሽያጭ ለመቀልበስ በመገለጫ ውስጥ ያድሱ። '
+          'ያሉት መዛግብሮች ይገኛሉ።',
+    );
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.tr('Undo this sale?', 'ይህን ሽያጭ ይቀልብሱ?')),
+        content: Text(
+          context.tr(
+            '${sale.lineItems.length} item(s), '
+                '${CurrencyFormatter.formatBirr(sale.totalAmount)}. '
+                'Undoing puts $units unit(s) back on the shelf'
+                '${leftBalance ? ' and removes the balance on the debts list' : ''}. '
+                'The sale stays in the records, marked as undone.',
+            '${sale.lineItems.length} ዕቃ፣ '
+                '${CurrencyFormatter.formatBirr(sale.totalAmount)}። '
+                'መቀልበስ $units እቃ ወደ መደርደሪያ ይመልሳል'
+                '${leftBalance ? ' በቀሪዎች ዝርዝር ላይ ያለውንም ያስወግዳል' : ''}። '
+                'ሽያጩ በመዛግብር ላይ እንደ ተቀለበሰ ሆኖ ይቆያል።',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(context.tr('Keep it', 'ይቆይ')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.alertRed,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(undoLabel),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final repository = await ref.read(saleRepositoryProvider.future);
+      await repository.voidSale(sale.id);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(doneMessage),
+            backgroundColor: AppColors.primaryTeal,
+          ),
+        );
+    } on LicenseRequiredException {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(licenseMessage),
+            backgroundColor: AppColors.alertRed,
+          ),
+        );
+    } on RepositoryException catch (error) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(error.message),
+            backgroundColor: AppColors.alertRed,
+          ),
+        );
+    }
   }
 
   Widget _buildQuickSellButton(BuildContext context) {

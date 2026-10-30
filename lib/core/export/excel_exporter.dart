@@ -30,14 +30,12 @@ class ExcelExporter {
   ///
   /// [businessName] only labels the Summary sheet.
   Future<File> export({String? businessName, Directory? toDirectory}) async {
-    final products = await _isar
-        .productModels
+    final products = await _isar.productModels
         .filter()
         .isDeletedEqualTo(false)
         .findAll();
     final sales = await _isar.saleModels.where().findAll();
-    final expenses = await _isar
-        .expenseModels
+    final expenses = await _isar.expenseModels
         .filter()
         .isDeletedEqualTo(false)
         .findAll();
@@ -116,7 +114,12 @@ class ExcelExporter {
     _kv(sheet, 'Cost of goods sold', cogs, money: true);
     _kv(sheet, 'Gross profit', grossProfit, money: true);
     _kv(sheet, 'Operating expenses', operating, money: true);
-    _kv(sheet, 'Net profit (gross - operating)', grossProfit - operating, money: true);
+    _kv(
+      sheet,
+      'Net profit (gross - operating)',
+      grossProfit - operating,
+      money: true,
+    );
     _kv(
       sheet,
       'Restock spend (capital, not counted in net profit)',
@@ -134,7 +137,12 @@ class ExcelExporter {
       valuation.retailValue,
       money: true,
     );
-    _kv(sheet, 'Profit still tied up in stock', valuation.potentialProfit, money: true);
+    _kv(
+      sheet,
+      'Profit still tied up in stock',
+      valuation.potentialProfit,
+      money: true,
+    );
     _kv(sheet, 'Low stock items', valuation.lowStockCount);
     _kv(sheet, 'Sold out items', valuation.outOfStockCount);
 
@@ -200,8 +208,7 @@ class ExcelExporter {
       'Notes',
     ]);
 
-    final sorted = [...sales]
-      ..sort((a, b) => b.saleDate.compareTo(a.saleDate));
+    final sorted = [...sales]..sort((a, b) => b.saleDate.compareTo(a.saleDate));
     for (final s in sorted) {
       _row(
         sheet,
@@ -235,8 +242,7 @@ class ExcelExporter {
       'Line profit',
     ]);
 
-    final sorted = [...sales]
-      ..sort((a, b) => b.saleDate.compareTo(a.saleDate));
+    final sorted = [...sales]..sort((a, b) => b.saleDate.compareTo(a.saleDate));
     for (final sale in sorted) {
       for (final item in sale.lineItems) {
         _row(
@@ -362,6 +368,7 @@ class ExcelExporter {
     PaymentMethod.cbeBirr => 'CBE Birr',
     PaymentMethod.amharaBank => 'Amhara Bank',
     PaymentMethod.mixed => 'Mixed',
+    PaymentMethod.credit => 'On credit',
   };
 }
 

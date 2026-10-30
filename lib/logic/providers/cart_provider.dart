@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/debt_model.dart';
 import '../../data/models/held_order_model.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/sale_model.dart';
@@ -12,6 +13,18 @@ class CartException implements Exception {
 
   @override
   String toString() => message;
+}
+
+/// How much of this invoice is actually being settled at the counter.
+enum SalePaymentPlan {
+  /// The customer hands over the whole amount, in cash or by mobile money.
+  paidInFull,
+
+  /// Some of it now, the rest goes on the debts list under the customer's name.
+  partPayment,
+
+  /// Nothing now. The whole invoice goes on the debts list.
+  onCredit,
 }
 
 class CartItem {
@@ -52,6 +65,8 @@ class CartState {
     required this.items,
     required this.paymentMethod,
     this.amountReceived,
+    this.paymentPlan = SalePaymentPlan.paidInFull,
+    this.customerName,
   });
 
   static const empty = CartState(
@@ -63,6 +78,10 @@ class CartState {
   final List<CartItem> items;
   final PaymentMethod paymentMethod;
   final double? amountReceived;
+  final SalePaymentPlan paymentPlan;
+
+  /// Whose name the balance goes under when this invoice is not settled now.
+  final String? customerName;
 
   bool get isEmpty => items.isEmpty;
 
@@ -76,8 +95,33 @@ class CartState {
 
   double get grossProfit => total - costTotal;
 
+  bool get isOnCredit => paymentPlan == SalePaymentPlan.onCredit;
+
+  bool get leavesABalance => paymentPlan != SalePaymentPlan.paidInFull;
+
+  /// Cash or mobile money actually taken at the counter for this invoice.
+  double get collectedNow {
+    switch (paymentPlan) {
+      case SalePaymentPlan.onCredit:
+        return 0;
+      case SalePaymentPlan.partPayment:
+        return (amountReceived ?? 0).clamp(0.0, total);
+      case SalePaymentPlan.paidInFull:
+        if (amountReceived == null) return total;
+        return amountReceived! >= total ? total : amountReceived!;
+    }
+  }
+
+  /// What still has to come in after this sale is recorded.
+  double get balanceDue {
+    final remaining = total - collectedNow;
+    return remaining > 0 ? remaining : 0;
+  }
+
   double? get change {
-    if (amountReceived == null) return null;
+    if (paymentPlan != SalePaymentPlan.paidInFull || amountReceived == null) {
+      return null;
+    }
     final value = amountReceived! - total;
     return value > 0 ? value : 0;
   }
@@ -98,6 +142,9 @@ class CartState {
     PaymentMethod? paymentMethod,
     double? amountReceived,
     bool clearAmountReceived = false,
+    SalePaymentPlan? paymentPlan,
+    String? customerName,
+    bool clearCustomerName = false,
   }) {
     return CartState(
       items: items ?? this.items,
@@ -105,6 +152,10 @@ class CartState {
       amountReceived: clearAmountReceived
           ? null
           : (amountReceived ?? this.amountReceived),
+      paymentPlan: paymentPlan ?? this.paymentPlan,
+      customerName: clearCustomerName
+          ? null
+          : (customerName ?? this.customerName),
     );
   }
 }
@@ -119,8 +170,9 @@ class CartNotifier extends StateNotifier<CartState> {
   final Ref _ref;
 
   void addItem(ProductModel product) {
-    final existingIndex =
-        state.items.indexWhere((item) => item.productId == product.id);
+    final existingIndex = state.items.indexWhere(
+      (item) => item.productId == product.id,
+    );
     if (existingIndex >= 0) {
       incrementQuantity(product.id);
       return;
@@ -145,8 +197,7 @@ class CartNotifier extends StateNotifier<CartState> {
   }
 
   void incrementQuantity(int productId) {
-    final index =
-        state.items.indexWhere((item) => item.productId == productId);
+    final index = state.items.indexWhere((item) => item.productId == productId);
     if (index < 0) return;
 
     final item = state.items[index];
@@ -162,8 +213,7 @@ class CartNotifier extends StateNotifier<CartState> {
   }
 
   void decrementQuantity(int productId) {
-    final index =
-        state.items.indexWhere((item) => item.productId == productId);
+    final index = state.items.indexWhere((item) => item.productId == productId);
     if (index < 0) return;
 
     final items = [...state.items];
@@ -177,9 +227,7 @@ class CartNotifier extends StateNotifier<CartState> {
 
   void removeItem(int productId) {
     state = state.copyWith(
-      items: state.items
-          .where((item) => item.productId != productId)
-          .toList(),
+      items: state.items.where((item) => item.productId != productId).toList(),
     );
   }
 
@@ -187,8 +235,7 @@ class CartNotifier extends StateNotifier<CartState> {
     if (newPrice <= 0) {
       throw CartException('Price must be greater than zero.');
     }
-    final index =
-        state.items.indexWhere((item) => item.productId == productId);
+    final index = state.items.indexWhere((item) => item.productId == productId);
     if (index < 0) return;
 
     final items = [...state.items];
@@ -198,6 +245,23 @@ class CartNotifier extends StateNotifier<CartState> {
 
   void setPaymentMethod(PaymentMethod method) {
     state = state.copyWith(paymentMethod: method);
+  }
+
+  /// Choosing "on credit" takes the tender field away - there is nothing
+  /// coming in at the counter to record.
+  void setPaymentPlan(SalePaymentPlan plan) {
+    state = state.copyWith(
+      paymentPlan: plan,
+      clearAmountReceived: plan == SalePaymentPlan.onCredit,
+    );
+  }
+
+  void setCustomerName(String? name) {
+    final trimmed = name?.trim() ?? '';
+    state = state.copyWith(
+      customerName: trimmed,
+      clearCustomerName: trimmed.isEmpty,
+    );
   }
 
   void setAmountReceived(double? amount) {
@@ -217,17 +281,38 @@ class CartNotifier extends StateNotifier<CartState> {
     if (state.isEmpty) {
       throw CartException('Cart is empty.');
     }
-    if (state.requiresAmountReceived) {
-      final received = state.amountReceived;
-      if (received == null || received < state.total) {
-        throw CartException('Amount received is less than the total.');
-      }
+    final customerName = state.customerName?.trim() ?? '';
+    switch (state.paymentPlan) {
+      case SalePaymentPlan.paidInFull:
+        if (state.requiresAmountReceived) {
+          final received = state.amountReceived;
+          if (received == null || received < state.total) {
+            throw CartException('Amount received is less than the total.');
+          }
+        }
+      case SalePaymentPlan.partPayment:
+        final received = state.amountReceived;
+        if (received == null || received <= 0) {
+          throw CartException(
+            'Enter the part payment the customer handed over.',
+          );
+        }
+        if (received >= state.total) {
+          throw CartException(
+            'That covers the whole invoice - choose Paid in full instead.',
+          );
+        }
+        _requireCustomerName(customerName);
+      case SalePaymentPlan.onCredit:
+        _requireCustomerName(customerName);
     }
 
+    final balanceDue = state.balanceDue;
     final now = DateTime.now();
+    final transactionId = 'EFY-${now.millisecondsSinceEpoch}';
     final sale = SaleModel(
       saleDate: now,
-      transactionId: 'EFY-${now.millisecondsSinceEpoch}',
+      transactionId: transactionId,
       lineItems: state.items
           .map(
             (item) => SaleLineItem()
@@ -244,18 +329,45 @@ class CartNotifier extends StateNotifier<CartState> {
       totalAmount: state.total,
       totalCost: state.costTotal,
       grossProfit: state.grossProfit,
-      paymentMethod: state.paymentMethod,
-      amountReceived: state.amountReceived,
+      paymentMethod: balanceDue > 0 && state.collectedNow == 0
+          ? PaymentMethod.credit
+          : state.paymentMethod,
+      // What the till actually keeps: an 800 Birr tender on a 780 invoice is
+      // 780 Birr of income and 20 Birr back to the customer, never 800.
+      amountReceived: state.collectedNow,
       changeGiven: state.change,
+      notes: customerName.isEmpty
+          ? null
+          : 'Customer: $customerName · Balance ${balanceDue.toStringAsFixed(2)}',
       cashierName: cashierName,
       createdAt: now,
     );
 
+    // The invoice keeps its full value - the margin was earned today - and the
+    // unpaid part becomes a separate receivable the merchant can settle later.
+    final debt = balanceDue <= 0
+        ? null
+        : DebtModel(
+            saleTransactionId: transactionId,
+            customerName: customerName,
+            totalAmount: state.total,
+            paidAmount: state.collectedNow,
+            openedAt: now,
+          );
+
     final repository = await _ref.read(saleRepositoryProvider.future);
-    await repository.createWithStockUpdate(sale);
+    await repository.createWithStockUpdate(sale, debt: debt);
 
     state = CartState.empty;
     return sale;
+  }
+
+  void _requireCustomerName(String customerName) {
+    if (customerName.isEmpty) {
+      throw CartException(
+        'Write the customer name so the balance can be tracked.',
+      );
+    }
   }
 
   /// Saves the current cart for later and clears it.
@@ -286,10 +398,10 @@ class CartNotifier extends StateNotifier<CartState> {
   /// Restores a held order, dropping products that were deleted or are now
   /// out of stock.
   Future<void> restoreHeldOrder(HeldOrderModel order) async {
-    final productRepository =
-        await _ref.read(productRepositoryProvider.future);
-    final heldOrderRepository =
-        await _ref.read(heldOrderRepositoryProvider.future);
+    final productRepository = await _ref.read(productRepositoryProvider.future);
+    final heldOrderRepository = await _ref.read(
+      heldOrderRepositoryProvider.future,
+    );
 
     final items = <CartItem>[];
     for (final heldItem in order.items) {
@@ -316,10 +428,7 @@ class CartNotifier extends StateNotifier<CartState> {
       );
     }
 
-    state = CartState(
-      items: items,
-      paymentMethod: state.paymentMethod,
-    );
+    state = CartState(items: items, paymentMethod: state.paymentMethod);
     await heldOrderRepository.delete(order.id);
   }
 }

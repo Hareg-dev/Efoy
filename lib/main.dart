@@ -8,6 +8,8 @@ import 'data/local/app_database.dart';
 import 'logic/providers/theme_provider.dart';
 import 'ui/screens/splash_screen.dart';
 import 'ui/screens/auth_screen.dart';
+import 'ui/screens/debts_screen.dart';
+import 'ui/screens/reports_screen.dart';
 import 'ui/screens/main_layout.dart';
 import 'ui/screens/session_guard.dart';
 import 'ui/screens/settings_screen.dart';
@@ -23,7 +25,7 @@ void main() async {
     ThemeMode.light => false,
     ThemeMode.system =>
       WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-      Brightness.dark,
+          Brightness.dark,
   };
 
   // Set system UI overlay style
@@ -54,6 +56,9 @@ void main() async {
         localeProvider.overrideWith(
           (ref) => LocaleNotifier(preferences.locale),
         ),
+        accentProvider.overrideWith(
+          (ref) => AccentNotifier(preferences.accent),
+        ),
       ],
       child: const EfoyApp(),
     ),
@@ -67,12 +72,13 @@ class EfoyApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
+    final accent = ref.watch(accentProvider);
 
     return MaterialApp(
       title: 'Efoy - እፎይ',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightThemeFor(accent),
+      darkTheme: AppTheme.darkThemeFor(accent),
       themeMode: themeMode,
       locale: locale,
       localizationsDelegates: appLocalizationsDelegates,
@@ -90,21 +96,18 @@ class EfoyApp extends ConsumerWidget {
         '/': (context) => const SplashScreen(),
         '/splash': (context) => const SplashScreen(),
         '/auth': (context) => const AuthScreen(),
-        '/home': (context) => const SessionGuard(
-              child: MainLayout(initialIndex: 0),
-            ),
-        '/sell': (context) => const SessionGuard(
-              child: MainLayout(initialIndex: 1),
-            ),
-        '/inventory': (context) => const SessionGuard(
-              child: MainLayout(initialIndex: 2),
-            ),
-        '/expenses': (context) => const SessionGuard(
-              child: MainLayout(initialIndex: 3),
-            ),
-        '/profile': (context) => const SessionGuard(
-              child: MainLayout(initialIndex: 4),
-            ),
+        '/home': (context) =>
+            const SessionGuard(child: MainLayout(initialIndex: 0)),
+        '/sell': (context) =>
+            const SessionGuard(child: MainLayout(initialIndex: 1)),
+        '/inventory': (context) =>
+            const SessionGuard(child: MainLayout(initialIndex: 2)),
+        '/expenses': (context) =>
+            const SessionGuard(child: MainLayout(initialIndex: 3)),
+        '/profile': (context) =>
+            const SessionGuard(child: MainLayout(initialIndex: 4)),
+        '/debts': (context) => const SessionGuard(child: DebtsScreen()),
+        '/reports': (context) => const SessionGuard(child: ReportsScreen()),
         '/settings': (context) => const SessionGuard(child: SettingsScreen()),
       },
     );

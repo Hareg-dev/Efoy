@@ -13,6 +13,8 @@ import '../../core/licensing/license_access_state.dart';
 import '../../core/security/password_hasher.dart';
 import '../../core/utils/date_helper.dart';
 import '../../core/utils/l10n.dart';
+import '../../core/utils/currency_formatter.dart';
+import '../../data/models/debt_model.dart';
 import '../../data/models/user_profile.dart';
 import '../../logic/providers/license_provider.dart';
 import '../../logic/providers/repository_providers.dart';
@@ -52,6 +54,12 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreenBody> {
     final accessAsync = ref.watch(licenseAccessProvider);
     final profile = profileAsync.valueOrNull;
     final licenseAccess = accessAsync.valueOrNull;
+    final openDebts =
+        ref.watch(openDebtsProvider).valueOrNull ?? const <DebtModel>[];
+    var outstanding = 0.0;
+    for (final debt in openDebts) {
+      outstanding += debt.balanceDue;
+    }
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -121,6 +129,22 @@ class _ProfileScreenState extends ConsumerState<_ProfileScreenBody> {
                 installationId: licenseAccess?.installationId,
                 onCopyInstallationId: _copyInstallationId,
                 onReactivate: _openReactivation,
+              ),
+              const SizedBox(height: AppTheme.spaceM),
+              _DebtsTile(
+                outstanding: outstanding,
+                openCount: openDebts.length,
+                onTap: () => Navigator.of(context).pushNamed('/debts'),
+              ),
+              const SizedBox(height: AppTheme.spaceM),
+              SettingsCard(
+                child: SettingsActionTile(
+                  icon: Icons.insights_outlined,
+                  title: 'Business report',
+                  subtitle: 'Profit, trends, costs and restock',
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.of(context).pushNamed('/reports'),
+                ),
               ),
               const SizedBox(height: AppTheme.spaceM),
               const _SupportCard(),
@@ -819,6 +843,61 @@ class _LicenseRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Receivables
+// ---------------------------------------------------------------------------
+
+/// How much of today's selling is still sitting in customers' hands.
+///
+/// The number is deliberately on the profile as well as on the sell screen: a
+/// balance that only ever shows at the counter is one nobody chases.
+class _DebtsTile extends StatelessWidget {
+  const _DebtsTile({
+    required this.outstanding,
+    required this.openCount,
+    required this.onTap,
+  });
+
+  final double outstanding;
+  final int openCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasDebts = openCount > 0;
+    return SettingsCard(
+      child: SettingsActionTile(
+        icon: Icons.handshake_outlined,
+        title: 'Who owes me',
+        subtitle: hasDebts
+            ? '$openCount customer${openCount == 1 ? '' : 's'} · take a payment'
+            : 'No open balances yet',
+        trailing: hasDebts
+            ? Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.alertAmber.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  CurrencyFormatter.formatBirrWhole(outstanding),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.alertAmber,
+                  ),
+                ),
+              )
+            : const Icon(Icons.chevron_right_rounded),
+        onTap: onTap,
+      ),
     );
   }
 }

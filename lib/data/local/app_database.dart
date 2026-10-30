@@ -1,4 +1,4 @@
-﻿import 'package:isar/isar.dart';
+import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/product_model.dart';
 import '../models/sale_model.dart';
@@ -7,6 +7,7 @@ import '../models/restock_log_model.dart';
 import '../models/license_model.dart';
 import '../models/user_profile.dart';
 import '../models/held_order_model.dart';
+import '../models/debt_model.dart';
 
 /// Efoy Local Database Manager using Isar
 class AppDatabase {
@@ -42,6 +43,7 @@ class AppDatabase {
         LicenseModelSchema,
         UserProfileSchema,
         HeldOrderModelSchema,
+        DebtModelSchema,
       ],
       directory: dirPath,
       name: name ?? 'efoy_retail_db',
@@ -85,6 +87,7 @@ class AppDatabase {
     final licenses = await isar.licenseModels.where().findAll();
     final userProfiles = await isar.userProfiles.where().findAll();
     final heldOrders = await isar.heldOrderModels.where().findAll();
+    final debts = await isar.debtModels.where().findAll();
 
     return {
       'products': products.map((p) => p.toJson()).toList(),
@@ -94,11 +97,14 @@ class AppDatabase {
       'licenses': licenses.map((l) => l.toJson()).toList(),
       'userProfiles': userProfiles.map((u) => u.toJson()).toList(),
       'heldOrders': heldOrders.map((h) => h.toJson()).toList(),
+      'debts': debts.map((d) => d.toJson()).toList(),
     };
   }
 
   /// Import database from JSON (for restore/sync)
-  Future<void> importFromJson(Map<String, List<Map<String, dynamic>>> data) async {
+  Future<void> importFromJson(
+    Map<String, List<Map<String, dynamic>>> data,
+  ) async {
     final isar = instance;
 
     await isar.writeTxn(() async {
@@ -156,6 +162,14 @@ class AppDatabase {
             .map((json) => HeldOrderModel.fromJson(json))
             .toList();
         await isar.heldOrderModels.putAll(heldOrders);
+      }
+
+      // Import debts
+      if (data.containsKey('debts')) {
+        final debts = data['debts']!
+            .map((json) => DebtModel.fromJson(json))
+            .toList();
+        await isar.debtModels.putAll(debts);
       }
     });
   }

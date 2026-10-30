@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:isar/isar.dart';
 
+import 'package:efoy_retail_app/data/models/debt_model.dart';
 import 'package:efoy_retail_app/data/models/expense_model.dart';
 import 'package:efoy_retail_app/data/models/held_order_model.dart';
 import 'package:efoy_retail_app/data/models/license_model.dart';
@@ -24,6 +25,7 @@ List<CollectionSchema<dynamic>> get efoySchemas => [
   LicenseModelSchema,
   UserProfileSchema,
   HeldOrderModelSchema,
+  DebtModelSchema,
 ];
 
 Future<void> initializeIsarHost() async {
@@ -50,10 +52,8 @@ Future<void> initializeIsarHost() async {
   }
 }
 
-Future<Isar> openTestIsar({
-  required String directory,
-  required String name,
-}) => Isar.open(efoySchemas, directory: directory, name: name);
+Future<Isar> openTestIsar({required String directory, required String name}) =>
+    Isar.open(efoySchemas, directory: directory, name: name);
 
 /// Path to the Isar dynamic library bundled by `isar_flutter_libs`, or null
 /// when this platform has no bundled copy.

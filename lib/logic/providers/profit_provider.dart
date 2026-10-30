@@ -1,12 +1,13 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:isar/isar.dart';
 
+import '../../data/models/debt_model.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/sale_model.dart';
+import '../../data/repositories/debt_repository.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../data/repositories/sale_repository.dart';
 import 'database_provider.dart';
@@ -22,6 +23,7 @@ final netProfitProvider = StreamProvider<NetProfitData>((ref) async* {
   final isar = await ref.watch(databaseProvider.future);
   final saleRepository = await ref.watch(saleRepositoryProvider.future);
   final expenseRepository = await ref.watch(expenseRepositoryProvider.future);
+  final debtRepository = await ref.watch(debtRepositoryProvider.future);
   final period = ref.watch(profitPeriodProvider);
   final changes = StreamController<void>();
   final subscriptions = <StreamSubscription<void>>[
@@ -31,11 +33,19 @@ final netProfitProvider = StreamProvider<NetProfitData>((ref) async* {
     isar.expenseModels.watchLazy(fireImmediately: true).listen((_) {
       changes.add(null);
     }),
+    isar.debtModels.watchLazy(fireImmediately: true).listen((_) {
+      changes.add(null);
+    }),
   ];
 
   try {
     await for (final _ in changes.stream) {
-      yield await _loadNetProfit(saleRepository, expenseRepository, period);
+      yield await _loadNetProfit(
+        saleRepository,
+        expenseRepository,
+        debtRepository,
+        period,
+      );
     }
   } finally {
     await Future.wait(
@@ -69,9 +79,16 @@ final dashboardSummaryProvider = StreamProvider<DashboardSummary>((ref) async* {
   }
 });
 
+/// What each view is allowed to subtract.
+///
+/// A day is judged on the margin it earned - a shop does not pay rent three
+/// times a day. Overhead belongs to the week it was spent in, and salaries are
+/// monthly money, so only the month view takes them out. Restock is capital
+/// either way and never appears here.
 Future<NetProfitData> _loadNetProfit(
   SaleRepository saleRepository,
   ExpenseRepository expenseRepository,
+  DebtRepository debtRepository,
   ProfitPeriod period,
 ) async {
   final (startDate, endDate) = periodBounds(DateTime.now(), period);
@@ -80,14 +97,51 @@ Future<NetProfitData> _loadNetProfit(
     startDate,
     endDate,
   );
+  final collectedLater = await debtRepository.settledBetween(
+    startDate,
+    endDate,
+  );
+  final outstanding = await debtRepository.openBalanceBetween(
+    startDate,
+    endDate,
+  );
+
+  return buildPeriodProfit(
+    sales: sales,
+    expenses: expenses,
+    settledLater: collectedLater,
+    outstanding: outstanding,
+    period: period,
+  );
+}
+
+/// The period rule on its own, so the three answers can be checked without a
+/// database: today subtracts nothing, the week subtracts overhead, the month
+/// subtracts overhead and salaries.
+NetProfitData buildPeriodProfit({
+  required SalesTotals sales,
+  required ExpenseTotals expenses,
+  required ProfitPeriod period,
+  double settledLater = 0,
+  double outstanding = 0,
+}) {
+  final subtractsOverhead = period != ProfitPeriod.today;
+  final subtractsSalaries = period == ProfitPeriod.month;
+  final overhead = subtractsOverhead ? expenses.overheadTotal : 0.0;
+  final salaries = subtractsSalaries ? expenses.salaryTotal : 0.0;
 
   return NetProfitData(
-    netProfit: sales.grossProfit - expenses.operatingTotal,
+    netProfit: sales.grossProfit - overhead - salaries,
     grossProfit: sales.grossProfit,
     revenue: sales.revenue,
-    opex: expenses.operatingTotal,
+    opex: overhead + salaries,
     salesCount: sales.count,
     period: period,
+    overhead: overhead,
+    salaries: salaries,
+    cashCollected: sales.cashCollected + settledLater,
+    outstanding: outstanding,
+    restockCapital: expenses.capitalTotal,
   );
 }
 
@@ -129,7 +183,6 @@ Future<DashboardSummary> _loadDashboardSummary(Isar isar) async {
 
 /// Half-open [start, end) bounds for a profit period, using the local
 /// calendar. Weeks start on Monday.
-@visibleForTesting
 (DateTime, DateTime) periodBounds(DateTime now, ProfitPeriod period) {
   switch (period) {
     case ProfitPeriod.today:
@@ -153,14 +206,41 @@ class NetProfitData {
     required this.opex,
     required this.salesCount,
     required this.period,
+    this.overhead = 0,
+    this.salaries = 0,
+    this.cashCollected = 0,
+    this.outstanding = 0,
+    this.restockCapital = 0,
   });
 
   final double netProfit;
   final double grossProfit;
   final double revenue;
+
+  /// Everything actually subtracted from the margin: [overhead] + [salaries].
   final double opex;
+
+  /// Rent, transport, utilities, airtime, supplies and other - week and month.
+  final double overhead;
+
+  /// Wages - month only, because they are paid monthly.
+  final double salaries;
+
+  /// Money that reached the till in this period, counter payments plus later
+  /// settle-ups. Profit is counted on the invoice, so this is the cash view.
+  final double cashCollected;
+
+  /// Balances from this period's selling that are still with customers.
+  final double outstanding;
+
+  /// Money spent buying stock. Never subtracted: it turned into inventory.
+  final double restockCapital;
+
   final int salesCount;
   final ProfitPeriod period;
+
+  /// A day only shows selling minus cost, so the card can say what was left out.
+  bool get countsGrossOnly => period == ProfitPeriod.today;
 
   String get periodLabel {
     switch (period) {

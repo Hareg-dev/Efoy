@@ -1,5 +1,6 @@
 import 'package:isar/isar.dart';
 
+import '../../data/models/debt_model.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/models/held_order_model.dart';
 import '../../data/models/license_model.dart';
@@ -11,9 +12,9 @@ import '../security/password_hasher.dart';
 
 /// What a destructive request covers.
 enum DataDeletionScope {
-  /// Products, sales, expenses, restock logs and held orders. The merchant
-  /// keeps their profile, password and activated license, so the shop simply
-  /// starts trading again from an empty book.
+  /// Products, sales, expenses, restock logs, held orders and open balances.
+  /// The merchant keeps their profile, password and activated license, so the
+  /// shop simply starts trading again from an empty book.
   businessRecords,
 
   /// Everything, including the profile and the license record. The app
@@ -30,6 +31,7 @@ class DataDeletionSummary {
     required this.expenses,
     required this.restockLogs,
     required this.heldOrders,
+    required this.debts,
     required this.profileExists,
     required this.licenses,
   });
@@ -39,10 +41,12 @@ class DataDeletionSummary {
   final int expenses;
   final int restockLogs;
   final int heldOrders;
+  final int debts;
   final bool profileExists;
   final int licenses;
 
-  int get businessTotal => products + sales + expenses + restockLogs + heldOrders;
+  int get businessTotal =>
+      products + sales + expenses + restockLogs + heldOrders + debts;
 }
 
 /// Raised when a deletion was refused. The message is safe to show.
@@ -76,6 +80,7 @@ class DataDeletionService {
       _isar.expenseModels.where().count(),
       _isar.restockLogModels.where().count(),
       _isar.heldOrderModels.where().count(),
+      _isar.debtModels.where().count(),
     ]);
     return DataDeletionSummary(
       products: counts[0],
@@ -83,6 +88,7 @@ class DataDeletionService {
       expenses: counts[2],
       restockLogs: counts[3],
       heldOrders: counts[4],
+      debts: counts[5],
       profileExists: await _isar.userProfiles.where().count() > 0,
       licenses: await _isar.licenseModels.where().count(),
     );
@@ -115,6 +121,7 @@ class DataDeletionService {
           await _isar.expenseModels.where().deleteAll();
           await _isar.restockLogModels.where().deleteAll();
           await _isar.heldOrderModels.where().deleteAll();
+          await _isar.debtModels.where().deleteAll();
         case DataDeletionScope.entireAccount:
           await _isar.clear();
       }

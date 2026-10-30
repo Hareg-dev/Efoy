@@ -9,11 +9,22 @@ class ExpenseTotals {
     required this.total,
     required this.operatingTotal,
     required this.capitalTotal,
+    this.salaryTotal = 0,
   });
 
   final double total;
   final double operatingTotal;
   final double capitalTotal;
+
+  /// The part of [operatingTotal] paid out as wages.
+  ///
+  /// Salaries are monthly by nature, which is why the weekly profit view stops
+  /// at overhead and only the monthly view subtracts them.
+  final double salaryTotal;
+
+  /// Operating spend that is not wages: rent, transport, utilities, airtime,
+  /// supplies and everything else.
+  double get overheadTotal => operatingTotal - salaryTotal;
 
   static const empty = ExpenseTotals(
     total: 0,
@@ -108,6 +119,7 @@ class ExpenseRepository implements BaseRepository<ExpenseModel> {
     var total = 0.0;
     var operating = 0.0;
     var capital = 0.0;
+    var salary = 0.0;
     for (final expense in expenses) {
       if (expense.isRestockExpense) {
         capital += expense.amount;
@@ -115,6 +127,9 @@ class ExpenseRepository implements BaseRepository<ExpenseModel> {
       } else {
         operating += expense.amount;
         total += expense.amount;
+        if (expense.category == ExpenseCategory.salary) {
+          salary += expense.amount;
+        }
       }
     }
 
@@ -122,6 +137,7 @@ class ExpenseRepository implements BaseRepository<ExpenseModel> {
       total: total,
       operatingTotal: operating,
       capitalTotal: capital,
+      salaryTotal: salary,
     );
   }
 }

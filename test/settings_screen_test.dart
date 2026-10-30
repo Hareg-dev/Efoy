@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:efoy_retail_app/core/constants/app_accents.dart';
 import 'package:efoy_retail_app/core/security/password_hasher.dart';
 import 'package:efoy_retail_app/data/models/user_profile.dart';
 import 'package:efoy_retail_app/logic/providers/repository_providers.dart';
@@ -41,9 +42,8 @@ Future<void> pump(
 }
 
 void main() {
-  testWidgets('settings owns appearance, reports and deletion', (
-    tester,
-  ) async {
+  _accentPickerTests();
+  testWidgets('settings owns appearance, reports and deletion', (tester) async {
     await pump(tester, profile: _profileWithPassword);
 
     expect(find.text('SETTINGS'), findsOneWidget);
@@ -121,5 +121,52 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('SETTINGS'), findsOneWidget);
+  });
+}
+
+/// The six palettes the merchant can pick, added because the profit window used
+/// to be green whatever the rest of the app looked like.
+void _accentPickerTests() {
+  testWidgets('offers all six palettes and marks the current one', (
+    tester,
+  ) async {
+    await pump(tester, profile: _profileWithPassword);
+
+    expect(find.text('Accent colour'), findsOneWidget);
+    for (final accent in AppAccent.values) {
+      expect(find.text(accent.label), findsOneWidget);
+    }
+  });
+
+  testWidgets('tapping a palette selects it and keeps the others unselected', (
+    tester,
+  ) async {
+    final container = ProviderContainer(
+      overrides: [
+        themeModeProvider.overrideWith(
+          (ref) => ThemeModeNotifier(ThemeMode.dark),
+        ),
+        userProfileProvider.overrideWith(
+          (ref) => Stream<UserProfile?>.value(_profileWithPassword),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(home: SettingsScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(container.read(accentProvider), AppAccent.teal);
+
+    await tester.tap(find.text('Crimson'));
+    await tester.pumpAndSettle();
+
+    expect(container.read(accentProvider), AppAccent.crimson);
+    expect(container.read(accentProvider), isNot(AppAccent.teal));
   });
 }

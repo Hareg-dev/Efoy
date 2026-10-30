@@ -15,23 +15,20 @@ class NetProfitCard extends ConsumerWidget {
     final profitAsync = ref.watch(netProfitProvider);
     final period = ref.watch(profitPeriodProvider);
     final language = ref.watch(languageProvider);
+    final accent = ref.watch(accentProvider);
 
     return Container(
       margin: const EdgeInsets.all(AppTheme.spaceL),
       decoration: BoxDecoration(
-        gradient: const RadialGradient(
-          center: Alignment(-0.75, -0.8),
+        gradient: RadialGradient(
+          center: const Alignment(-0.75, -0.8),
           radius: 1.7,
-          colors: [
-            AppColors.profitGradStart,
-            AppColors.profitGradMid,
-            AppColors.profitGradEnd,
-          ],
+          colors: accent.profitGradient,
         ),
         borderRadius: BorderRadius.circular(AppTheme.radiusXLarge),
         boxShadow: [
           BoxShadow(
-            color: AppColors.profitGradStart.withValues(alpha: 0.35),
+            color: accent.profitStart.withValues(alpha: 0.35),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -184,6 +181,71 @@ class NetProfitCard extends ConsumerWidget {
               ],
             ),
           ),
+          if (data.countsGrossOnly)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(
+                language == 'am'
+                    ? 'ዛሬ የሽያጭ ሲቀነስ ወጪ ብቻ ነው። ኪራይ፣ ደሞዝና ሌሎች ወጪዎች '
+                          'በሳምንትና በወር ይቀነሳሉ።'
+                    : 'Today counts selling minus cost only. Rent and other '
+                          'overhead are subtracted in the weekly view, '
+                          'salaries in the monthly view.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  fontSize: 10,
+                  height: 1.4,
+                ),
+              ),
+            )
+          else ...[
+            if (data.overhead > 0)
+              _buildDeductionLine(
+                language == 'am' ? 'የስራ ወጪ ተቀንሷል' : 'Less overhead',
+                data.overhead,
+              ),
+            if (data.salaries > 0)
+              _buildDeductionLine(
+                language == 'am' ? 'ደሞዝ ተቀንሷል' : 'Less salaries',
+                data.salaries,
+              ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildBreakdownItem(
+                  label: language == 'am' ? 'ጥሬ ገንዘብ' : 'CASH IN',
+                  amount: data.cashCollected,
+                  amountColor: AppColors.emerald200,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildBreakdownItem(
+                  label: language == 'am' ? 'በእዳ' : 'ON CREDIT',
+                  amount: data.outstanding,
+                  amountColor: const Color(0xFFFCD34D),
+                ),
+              ),
+            ],
+          ),
+          if (data.restockCapital > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                language == 'am'
+                    ? 'የእቃ መሙላት ${CurrencyFormatter.formatBirr(data.restockCapital)} '
+                          'ካፒታል ስለሆነ አልተቀነሰም።'
+                    : 'Restocked ${CurrencyFormatter.formatBirr(data.restockCapital)} '
+                          'of capital - stock, not an expense, so never subtracted.',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 9.5,
+                  height: 1.35,
+                ),
+              ),
+            ),
           const SizedBox(height: 18),
           Container(
             padding: const EdgeInsets.all(4),
@@ -255,6 +317,36 @@ class NetProfitCard extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// One line per deduction, so the number above it is never a mystery.
+  Widget _buildDeductionLine(String label, double amount) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(Icons.remove_circle_outline, size: 13, color: AppColors.rose300),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 11,
+              ),
+            ),
+          ),
+          Text(
+            '-${CurrencyFormatter.formatBirr(amount)}',
+            style: const TextStyle(
+              color: AppColors.rose300,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

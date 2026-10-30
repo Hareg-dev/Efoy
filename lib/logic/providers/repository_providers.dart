@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/models/debt_model.dart';
 import '../../data/models/expense_model.dart';
 import '../../data/models/held_order_model.dart';
 import '../../data/models/license_model.dart';
 import '../../data/models/product_model.dart';
 import '../../data/models/user_profile.dart';
+import '../../data/repositories/debt_repository.dart';
 import '../../data/repositories/expense_repository.dart';
 import '../../data/repositories/held_order_repository.dart';
 import '../../data/repositories/product_repository.dart';
@@ -13,7 +15,9 @@ import '../../data/repositories/user_repository.dart';
 import 'database_provider.dart';
 import 'license_provider.dart';
 
-final productRepositoryProvider = FutureProvider<ProductRepository>((ref) async {
+final productRepositoryProvider = FutureProvider<ProductRepository>((
+  ref,
+) async {
   final isar = await ref.watch(databaseProvider.future);
   final gate = await ref.watch(licenseGateProvider.future);
   return ProductRepository(isar, gate);
@@ -25,17 +29,26 @@ final saleRepositoryProvider = FutureProvider<SaleRepository>((ref) async {
   return SaleRepository(isar, gate);
 });
 
-final expenseRepositoryProvider = FutureProvider<ExpenseRepository>((ref) async {
+final expenseRepositoryProvider = FutureProvider<ExpenseRepository>((
+  ref,
+) async {
   final isar = await ref.watch(databaseProvider.future);
   final gate = await ref.watch(licenseGateProvider.future);
   return ExpenseRepository(isar, gate);
 });
 
-final heldOrderRepositoryProvider =
-    FutureProvider<HeldOrderRepository>((ref) async {
+final heldOrderRepositoryProvider = FutureProvider<HeldOrderRepository>((
+  ref,
+) async {
   final isar = await ref.watch(databaseProvider.future);
   final gate = await ref.watch(licenseGateProvider.future);
   return HeldOrderRepository(isar, gate);
+});
+
+final debtRepositoryProvider = FutureProvider<DebtRepository>((ref) async {
+  final isar = await ref.watch(databaseProvider.future);
+  final gate = await ref.watch(licenseGateProvider.future);
+  return DebtRepository(isar, gate);
 });
 
 final userRepositoryProvider = FutureProvider<UserRepository>((ref) async {
@@ -65,6 +78,18 @@ final heldOrdersProvider = StreamProvider<List<HeldOrderModel>>((ref) async* {
 final userProfileProvider = StreamProvider<UserProfile?>((ref) async* {
   final repository = await ref.watch(userRepositoryProvider.future);
   yield* repository.watchProfile();
+});
+
+/// Balances the counter left open, oldest first.
+final openDebtsProvider = StreamProvider<List<DebtModel>>((ref) async* {
+  final repository = await ref.watch(debtRepositoryProvider.future);
+  yield* repository.watchOpenDebts();
+});
+
+/// Balances that have been paid off, newest settlement first.
+final settledDebtsProvider = StreamProvider<List<DebtModel>>((ref) async* {
+  final repository = await ref.watch(debtRepositoryProvider.future);
+  yield* repository.watchSettledDebts();
 });
 
 /// Currently active license (if any).

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/backup/data_backup.dart';
+import '../../core/constants/app_accents.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/export/excel_exporter.dart';
@@ -74,9 +75,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SettingsSectionTitle(
-                      context.tr('Appearance', 'አቀራረብ'),
-                    ),
+                    SettingsSectionTitle(context.tr('Appearance', 'አቀራረብ')),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -107,6 +106,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+                    SettingsSectionTitle(
+                      context.tr('Accent colour', 'የቀለም ምርጫ'),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.tr(
+                        'Paints the profit window, the cart total and every '
+                            'button. Teal is the shop default.',
+                        'የትርፍ መስኮቱን፣ የጋሪ ድምርንና ሁሉንም ቁልፎች ይቀባል። '
+                            'ቀላል አረንጓዴ የመጀመሪያ ምርጫ ነው።',
+                      ),
+                      style: TextStyle(
+                        fontSize: 11,
+                        height: 1.4,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _AccentPicker(
+                      selected: ref.watch(accentProvider),
+                      onSelected: _setAccent,
                     ),
                     const SizedBox(height: 16),
                     SettingsSectionTitle(context.tr('Language', 'ቋንቋ')),
@@ -183,7 +205,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         'Restore from an exported JSON backup',
                         'ከተላከ JSON ምትኬ ወደነበረበት ይመልሱ',
                       ),
-                      trailing: const Icon(Icons.upload_file_outlined, size: 20),
+                      trailing: const Icon(
+                        Icons.upload_file_outlined,
+                        size: 20,
+                      ),
                       onTap: _busy ? null : _restoreJson,
                     ),
                   ],
@@ -194,9 +219,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SettingsSectionTitle(
-                      context.tr('Delete data', 'ውሂብ ሰርዝ'),
-                    ),
+                    SettingsSectionTitle(context.tr('Delete data', 'ውሂብ ሰርዝ')),
                     const SizedBox(height: 4),
                     Text(
                       hasPassword
@@ -206,7 +229,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             )
                           : context.tr(
                               'Set a password in Profile before deleting '
-                              'anything.',
+                                  'anything.',
                               'ማጥፋት ከመፈጸሙ በፊት በመገለጫ የይለፍ ቃል ይስጡ።',
                             ),
                       style: TextStyle(
@@ -219,32 +242,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     SettingsActionTile(
                       icon: Icons.cleaning_services_outlined,
                       danger: true,
-                      title: context.tr(
-                        'Clear sales & stock',
-                        'ሽያጭና ክምችት አጽዳ',
-                      ),
+                      title: context.tr('Clear sales & stock', 'ሽያጭና ክምችት አጽዳ'),
                       subtitle: context.tr(
                         'Products, sales, expenses. Keeps profile & license.',
                         'እቃዎች፣ ሽያጮች፣ ወጪዎች። መገለጫና ፈቃድ ይቆያሉ።',
                       ),
                       onTap: hasPassword
-                          ? () => _startDeletion(DataDeletionScope.businessRecords)
+                          ? () => _startDeletion(
+                              DataDeletionScope.businessRecords,
+                            )
                           : null,
                     ),
                     const SizedBox(height: 8),
                     SettingsActionTile(
                       icon: Icons.delete_forever_outlined,
                       danger: true,
-                      title: context.tr(
-                        'Delete everything',
-                        'ሁሉንም ሰርዝ',
-                      ),
+                      title: context.tr('Delete everything', 'ሁሉንም ሰርዝ'),
                       subtitle: context.tr(
                         'Wipes this device and signs you out',
                         'ዚህን መሣሪያ አጽድቶ ያስወጣል',
                       ),
                       onTap: hasPassword
-                          ? () => _startDeletion(DataDeletionScope.entireAccount)
+                          ? () =>
+                                _startDeletion(DataDeletionScope.entireAccount)
                           : null,
                     ),
                   ],
@@ -276,6 +296,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         context.tr(
           'This choice could not be saved - the app may open in the old theme.',
           'ይህ ምርጫ ማስቀመጥ አልተቻለም - መተግበሪያው በድሮው ውስብስብ ሊከፈት ይችላል።',
+        ),
+        isError: true,
+      );
+    }
+  }
+
+  Future<void> _setAccent(AppAccent accent) async {
+    try {
+      await ref.read(accentProvider.notifier).setAccent(accent);
+    } on Object catch (_) {
+      if (!mounted) return;
+      _showSnack(
+        context.tr(
+          'This colour could not be saved - the app may open in the old one.',
+          'ይህ ቀለም ማስቀመጥ አልተቻለም - መተግበሪያው በድሮው ቀለም ሊከፈት ይችላል።',
         ),
         isError: true,
       );
@@ -342,9 +377,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         content: Text(
           context.tr(
             'This will write $count records. Any existing records with the '
-            'same IDs will be replaced. This cannot be undone.',
+                'same IDs will be replaced. This cannot be undone.',
             'ይህ $count መዝገቦችን ይጽፋል። ተመሳሳይ መለያ ያላቸው ነባር መዝገቦች ይተካሉ። '
-            'ይህ አይመለስም።',
+                'ይህ አይመለስም።',
           ),
         ),
         actions: [
@@ -413,9 +448,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     _invalidateAll();
     if (scope == DataDeletionScope.entireAccount) {
-      Navigator.of(
-        context,
-      ).pushNamedAndRemoveUntil('/auth', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/auth', (route) => false);
       return;
     }
     _showSnack(context.tr('Records cleared', 'መዝገቦቹ ተሰርዘዋል'));
@@ -477,12 +510,11 @@ class _Spinner extends StatelessWidget {
   const _Spinner();
 
   @override
-  Widget build(BuildContext context) =>
-      const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
+  Widget build(BuildContext context) => const SizedBox(
+    width: 18,
+    height: 18,
+    child: CircularProgressIndicator(strokeWidth: 2),
+  );
 }
 
 class _RestoreDialog extends StatefulWidget {
@@ -671,12 +703,12 @@ class _DeletionDialogState extends ConsumerState<_DeletionDialog> {
               full
                   ? context.tr(
                       'This device will go back to first run. Nothing can be '
-                      'recovered afterwards.',
+                          'recovered afterwards.',
                       'ይህ መሣሪያ ወደ መጀመሪያ ሁኔታ ይመለሳል። ከኋላ ምንም አይመለስም።',
                     )
                   : context.tr(
                       'Your shop starts from an empty book. The profile and '
-                      'the license stay on this device.',
+                          'the license stay on this device.',
                       'ሱቅዎ ከባዶ መጽሐፍ ይጀምራል። መገለጫና ፈቃዱ በዚህ መሣሪያ ላይ ይቆያሉ።',
                     ),
               style: TextStyle(
@@ -690,10 +722,7 @@ class _DeletionDialogState extends ConsumerState<_DeletionDialog> {
               label: context.tr('Products', 'እቃዎች'),
               value: summary.products,
             ),
-            _CountRow(
-              label: context.tr('Sales', 'ሽያጮች'),
-              value: summary.sales,
-            ),
+            _CountRow(label: context.tr('Sales', 'ሽያጮች'), value: summary.sales),
             _CountRow(
               label: context.tr('Expenses', 'ወጪዎች'),
               value: summary.expenses,
@@ -718,10 +747,7 @@ class _DeletionDialogState extends ConsumerState<_DeletionDialog> {
               enabled: !_running,
               autofillHints: const [AutofillHints.password],
               decoration: InputDecoration(
-                labelText: context.tr(
-                  'Account password',
-                  'የመግቢያ የይለፍ ቃል',
-                ),
+                labelText: context.tr('Account password', 'የመግቢያ የይለፍ ቃል'),
                 isDense: true,
                 prefixIcon: const Icon(Icons.lock_outline, size: 18),
                 suffixIcon: IconButton(
@@ -757,17 +783,16 @@ class _DeletionDialogState extends ConsumerState<_DeletionDialog> {
             foregroundColor: Colors.white,
           ),
           onPressed: _running ? null : _submit,
-          icon:
-              _running
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.delete_forever, size: 16),
+          icon: _running
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.delete_forever, size: 16),
           label: Text(
             full
                 ? context.tr('Delete all', 'ሁሉንም ሰርዝ')
@@ -808,6 +833,94 @@ class _CountRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Six palettes, each shown as the gradient it will paint the profit window.
+///
+/// The swatch previews the real gradient rather than a flat dot, because that
+/// window is the surface a merchant looks at every day.
+class _AccentPicker extends StatelessWidget {
+  const _AccentPicker({required this.selected, required this.onSelected});
+
+  final AppAccent selected;
+  final ValueChanged<AppAccent> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final accent in AppAccent.values)
+          Semantics(
+            selected: accent == selected,
+            button: true,
+            label: accent.label,
+            child: InkWell(
+              onTap: () => onSelected(accent),
+              borderRadius: BorderRadius.circular(12),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: accent == selected
+                      ? accent.tint
+                      : scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: accent == selected
+                        ? accent.seed
+                        : scheme.outlineVariant,
+                    width: accent == selected ? 1.6 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: accent.profitGradient,
+                        ),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: accent == selected
+                          ? const Icon(
+                              Icons.check,
+                              size: 14,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.isAmharic ? accent.labelAm : accent.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: accent == selected
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        color: accent == selected
+                            ? accent.deep
+                            : scheme.onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
