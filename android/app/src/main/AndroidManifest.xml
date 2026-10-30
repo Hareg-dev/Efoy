@@ -1,8 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Permissions -->
+    <!-- Only used by the optional Inter font download; the shop itself is
+         fully offline. The application never sends business data anywhere. -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.CAMERA" />
     
     <application
         android:label="Efoy"
