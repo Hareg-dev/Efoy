@@ -1,3 +1,7 @@
+# Signing material - never commit
+*.seed.b64
+**/keys/
+
 # Miscellaneous
 *.class
 *.log
