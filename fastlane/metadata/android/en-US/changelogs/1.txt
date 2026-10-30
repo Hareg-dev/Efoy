@@ -1,0 +1,10 @@
+First public release.
+
+Sell with cash, Telebirr, CBE Birr, Amhara Bank or a mix; settle in full, in
+part, or on credit with the customer's name.
+
+New: "Who owes me" list with settle-ups, period-split profit (today, week,
+month), business report with product trends and restock history, six accent
+colours, and Undo on the last three sales.
+
+The shop works fully offline and never sends your data anywhere.

@@ -1,0 +1,49 @@
+Efoy is a point-of-sale, stock and profit app built for Ethiopian shops. It runs
+entirely on your phone: no account, no subscription server, no internet needed.
+
+SELL
+Tap products into a cart, change quantities, or override a price with your
+password. Settle in full, take a part payment, or record the sale on credit with
+the customer's name. Cash, Telebirr, CBE Birr, Amhara Bank or a mix, with change
+worked out for you. Hold an order and resume it when the queue moves on.
+
+WHEN A CUSTOMER OWES YOU
+A credit or part-paid sale keeps its full value, so your profit stays on the day
+the goods left the shop. The unpaid part appears in "Who owes me" with the
+customer's name, phone and every instalment taken since. Taking money later only
+moves that balance; the original sale is never edited, and nobody is chased for a
+sale you have undone.
+
+STOCK THAT ADDS UP
+Weighted-average costing on every restock, so margin is real. See stock value,
+low-stock and sold-out products on the home screen, and keep a restock log with
+what each batch cost.
+
+EXPENSES AND REAL PROFIT
+Record rent, salaries, transport, utilities, airtime and supplies by category.
+Restocking is treated as capital, not an expense, because it becomes stock.
+Profit is split the way a shop actually works: today is selling minus the cost
+of the goods sold; the week also subtracts running costs; the month subtracts
+salaries too. The profit card prints every deduction and shows the cash you
+actually took beside the money still with customers.
+
+REPORTS
+A business report with daily trading, your best day, product trends ranked by
+profit, operating costs by category and restock history.
+
+A MISTAKE IS FIXABLE
+The last three sales on the home screen each have Undo. It puts the units back on
+the shelf and clears any balance the sale opened, in one step, and asks first.
+
+YOUR SHOP, YOUR LOOK
+Store name, owner name and photo. Light, dark or follow the system, six accent
+colours, and English or Amharic. Export an Excel report, take a full JSON backup,
+and restore it on a new phone.
+
+PRIVATE BY DEFAULT
+No analytics, no ads, no accounts. Your sales and stock stay in a local database
+on the device; nothing is uploaded anywhere. The app works in airplane mode.
+
+FREELY LICENSED
+Efoy is free software under the GNU GPL v3 or later. The source is published so
+anyone can inspect, build and improve it.
